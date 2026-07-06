@@ -9,7 +9,7 @@ struct treelink {
 struct character {
 	char c; // idk if this is signed or unsigned, I just need it to store a raw byte
 	unsigned int count;
-	struct treelink treelink;
+	struct treelink link;
 };
 
 enum {MAX = 128};

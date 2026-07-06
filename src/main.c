@@ -45,13 +45,45 @@ int main(int argc, char *argv[]) {
 	// Now put in p_queue
 	for (int i = 0; i < HM_LEN; i++) {
 		if (hash_map[i]) {
-			tree[top++] = (struct character) {i, hash_map[i], (struct treelink) {NULL, NULL}};
+			tree[top++] = (struct character) {i, hash_map[i], NULL, NULL};
 			pq_enqueue(tree + top - 1);
 		}
 	}
+	// Note that top ends up as the length of the hashmap
 
 	// debug
 	pq_print();
+	/*
+	for (int i = 0; i < top; i++)
+		printf("%p %p\n", tree[i].link.left, tree[i].link.right);
+	*/
+
+	/*
+	construct tree
+
+	We use the priority queue to keep popping the least frequent nodes and
+	enqueue the parent nodes
+
+	we do that till the queue is empty, at which point we get the root node as
+	the final node
+	*/
+	struct character *current_nodes[2];
+	while ((current_nodes[0] = pq_dequeue()) && (current_nodes[1] = pq_dequeue())) {
+		tree[top] = (struct character) {
+			'\0',
+			current_nodes[0]->count + current_nodes[1]->count,
+			{current_nodes[0], current_nodes[1]}
+		};
+		pq_enqueue(&tree[top++]);
+	}
+	printf("%d\n%d\n", top, char_count);
+
+	/*
+	current_nodes[0] is the root node
+
+	We can start encoding or we can start doing whatever we want here
+	*/
+	// print_tree(current_nodes[0]);
 	return 0;
 }
 
