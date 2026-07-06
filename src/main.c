@@ -33,11 +33,42 @@ int main(int argc, char *argv[]) {
 	/*
 	count of all the unique characters
 	*/
-	for (int i = 0; i < buf.len; i++)
-		hash_map[buf.ptr[i]]+=1;
+	unsigned int char_count = 0;
+	for (int i = 0; i < buf.len - 1; i++) {
+		if (!hash_map[buf.ptr[i]]) char_count++;
+		hash_map[buf.ptr[i]] += 1;
+	}
+
+	struct character *tree = malloc(sizeof(struct character) * char_count - 1);
+	unsigned int top = 0;
+
 	// Now put in p_queue
-	for (int i = 0; i < HM_LEN; i++)
-		if (hash_map[i]) pq_enqueue((struct character) {i, hash_map[i]});
+	for (int i = 0; i < HM_LEN; i++) {
+		if (hash_map[i]) {
+			tree[top++] = (struct character) {i, hash_map[i]};
+			pq_enqueue((struct character) {i, hash_map[i]});
+		}
+	}
+
+	// debug
+	pq_print();
+	/*
+	Now we pop the queue one by one and merge into another binary tree node
+	whose count is the sum of the previous queue
+
+	We then put that node back into the p queue... and we have to remove the 2
+	child nodes from the p queue
+
+	When we eventually run out of elements in the queue, we'll know the binary
+	tree is complete, and we can start encoding.
+	*/
+
+	/*
+	Now, what should I do about the binary tree ? I... could just .... If I'm
+	using the same p queue... that would work I think.
+
+	But dequeuing would effectively loose that memory
+	*/
 	return 0;
 }
 
