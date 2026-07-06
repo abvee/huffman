@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
 	// handles all the buffer stuff
 	read_input();
 	// debug
-	printf("%s", buf.ptr);
+	// printf("%s", buf.ptr); // not good for long inputs
 	printf("%d\n", buf.len);
 	printf("%d\n", buf.capacity);
 
@@ -45,30 +45,13 @@ int main(int argc, char *argv[]) {
 	// Now put in p_queue
 	for (int i = 0; i < HM_LEN; i++) {
 		if (hash_map[i]) {
-			tree[top++] = (struct character) {i, hash_map[i]};
-			pq_enqueue((struct character) {i, hash_map[i]});
+			tree[top++] = (struct character) {i, hash_map[i], (struct treelink) {NULL, NULL}};
+			pq_enqueue(tree + top - 1);
 		}
 	}
 
 	// debug
 	pq_print();
-	/*
-	Now we pop the queue one by one and merge into another binary tree node
-	whose count is the sum of the previous queue
-
-	We then put that node back into the p queue... and we have to remove the 2
-	child nodes from the p queue
-
-	When we eventually run out of elements in the queue, we'll know the binary
-	tree is complete, and we can start encoding.
-	*/
-
-	/*
-	Now, what should I do about the binary tree ? I... could just .... If I'm
-	using the same p queue... that would work I think.
-
-	But dequeuing would effectively loose that memory
-	*/
 	return 0;
 }
 

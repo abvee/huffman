@@ -1,4 +1,3 @@
-
 #ifndef PROJECT_COMMON
 #define PROJECT_COMMON
 // character to store in p_queue
