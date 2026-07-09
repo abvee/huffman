@@ -41,7 +41,8 @@ int main(int argc, char *argv[]) {
 		hash_map[buf.ptr[i]] += 1;
 	}
 
-	struct character *tree = malloc(sizeof(struct character) * char_count - 1);
+	// full binary tree needs 2n - 1 nodes (n - 1 internal, n external)
+	struct character *tree = malloc(sizeof*tree * (2 * char_count - 1));
 	unsigned int top = 0;
 
 	// Now put in p_queue
@@ -85,7 +86,10 @@ int main(int argc, char *argv[]) {
 
 	We can start encoding or we can start doing whatever we want here
 	*/
-	// print_tree(current_nodes[0]);
+	print_tree(current_nodes[0], 0);
+
+	free(buf.ptr);
+	free(tree);
 	return 0;
 }
 
