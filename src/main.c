@@ -6,6 +6,7 @@
 
 #include "common.h"
 #include "p-queue.c"
+#include "tree-printing.c"
 
 struct {
 	signed char *ptr;
