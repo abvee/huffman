@@ -3,10 +3,10 @@
 #include <unistd.h>
 #include <string.h>
 #include <math.h>
+#include <ctype.h>
 
 #include "common.h"
 #include "p-queue.c"
-#include "tree-printing.c"
 
 struct {
 	signed char *ptr;
@@ -19,6 +19,7 @@ giant fuck off hash map for every possible character
 unsigned int hash_map[HM_LEN];
 
 void read_input();
+void print_tree(struct character *current_node, unsigned int lvl);
 
 int main(int argc, char *argv[]) {
 	buf.capacity = MAX;
@@ -98,4 +99,19 @@ void read_input() {
 			buf.ptr = realloc(buf.ptr, sizeof *buf.ptr * (buf.capacity *= 2));
 	} while (buf.ptr[buf.len - 1] != EOF);
 	buf.ptr[buf.len - 1] = '\0';
+}
+
+void print_tree(struct character *current_node, unsigned int lvl) {
+	if (!current_node) return;
+	// print at correct depth
+	for (int i = 0; i < lvl; i++)
+		printf("\t");
+
+	if (isalnum(current_node->c))
+		printf("%c(%d):%u\n", current_node->c, current_node->c, current_node->count);
+	else
+		printf("(%d):%d\n", current_node->c, current_node->count);
+
+	print_tree(current_node->link.left, lvl + 1);
+	print_tree(current_node->link.right, lvl + 1);
 }
