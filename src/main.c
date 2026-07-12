@@ -29,8 +29,8 @@ int main(int argc, char *argv[]) {
 	read_input();
 	// debug
 	// printf("%s", buf.ptr); // not good for long inputs
-	printf("%d\n", buf.len);
-	printf("%d\n", buf.capacity);
+	printf("Input length: %d\n", buf.len);
+	printf("Buffer capacity: %d\n", buf.capacity);
 
 	/*
 	count of all the unique characters
@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
 		};
 		pq_enqueue(&tree[top++]);
 	}
-	printf("%d\n%d\n", top, char_count);
+	printf("Tree top: %d\nUnique character count: %d\n", top, char_count);
 
 	/*
 	current_nodes[0] is the root node
@@ -108,8 +108,9 @@ void read_input() {
 void print_tree(struct character *current_node, unsigned int lvl) {
 	if (!current_node) return;
 	// print at correct depth
-	for (int i = 0; i < lvl; i++)
-		printf("\t");
+	for (int i = 0; i < (int) lvl - 1; i++)
+		printf("|\t");
+	if (lvl) printf("|----");
 
 	if (isalnum(current_node->c))
 		printf("%c(%d):%u\n", current_node->c, current_node->c, current_node->count);
