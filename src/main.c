@@ -56,10 +56,6 @@ int main(int argc, char *argv[]) {
 
 	// debug
 	pq_print();
-	/*
-	for (int i = 0; i < top; i++)
-		printf("%p %p\n", tree[i].link.left, tree[i].link.right);
-	*/
 
 	/*
 	construct tree
@@ -71,7 +67,24 @@ int main(int argc, char *argv[]) {
 	the final node
 	*/
 	struct character *current_nodes[2];
-	while ((current_nodes[0] = pq_dequeue()) && (current_nodes[1] = pq_dequeue())) {
+
+	/*
+	We don't compare both current_nodes[0] for NULL because in the end, there's
+	only the root node left in the queue.
+
+	In that situation, current_nodes[1] = dequeue() will give us NULL
+
+	Using this:
+	current_nodes[0] = pq_dequeue() && current_nodes[1] = pq_dequeue()
+
+	Is a waste because we always break on the current_nodes[1] = pq_dequeue(),
+	the first part of the expression does nothing
+	*/
+	for (
+		current_nodes[0] = pq_dequeue();
+		current_nodes[1] = pq_dequeue();
+		current_nodes[0] = pq_dequeue()
+	) {
 		tree[top] = (struct character) {
 			'\0',
 			current_nodes[0]->count + current_nodes[1]->count,
@@ -81,11 +94,7 @@ int main(int argc, char *argv[]) {
 	}
 	printf("Tree top: %d\nUnique character count: %d\n", top, char_count);
 
-	/*
-	current_nodes[0] is the root node
-
-	We can start encoding or we can start doing whatever we want here
-	*/
+	// current_nodes[0] is the root node
 	print_tree(current_nodes[0], 0);
 
 	free(buf.ptr);
