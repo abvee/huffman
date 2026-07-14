@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
 	// generate canonical codes
 	struct character *prev = pq_dequeue();
 	encodings[prev->c].n_bits = prev->count;
-	printf("%c(%d): %d ->\n", prev->c, prev->c, encodings[prev->c].n_bits);
+	printf("%c(%d): %d -> ", prev->c, prev->c, encodings[prev->c].n_bits);
 
 	for (int i = 0; i < sizeof encodings[prev->c].bits / sizeof encodings[prev->c].bits[0]; i++) {
 		encodings[prev->c].bits[i] = 0;
@@ -130,7 +130,13 @@ int main(int argc, char *argv[]) {
 		);
 
 		// add 1
-		for (int i = 0; ++encodings[next->c].bits[i++];);
+		for (int i = 0; !++encodings[next->c].bits[i++];);
+
+		// debug print
+		printf("%c(%d): %d -> ", next->c, next->c, encodings[next->c].n_bits);
+		for (int i = 0; i < sizeof encodings[next->c].bits / sizeof encodings[next->c].bits[0]; i++)
+			printf("0x%016llx ", encodings[next->c].bits[i]);
+		printf("\n");
 
 		// TODO: shift by encodings[next->c].n_bits - encodings[prev->c].n_bits
 		prev = next;
