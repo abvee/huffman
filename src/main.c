@@ -22,6 +22,9 @@ struct {
 	uint64_t bits[HM_LEN / (sizeof(uint64_t) * 8)];
 	uint8_t n_bits;
 } encodings[HM_LEN];
+enum {
+	TYPE_LEN_BITS = sizeof encodings[0].bits[0] * 8
+};
 
 void read_input();
 void print_tree(struct character *current_node, unsigned int lvl);
@@ -111,35 +114,48 @@ int main(int argc, char *argv[]) {
 	// generate canonical codes
 	struct character *prev = pq_dequeue();
 	encodings[prev->c].n_bits = prev->count;
-	printf("%c(%d): %d -> ", prev->c, prev->c, encodings[prev->c].n_bits);
 
+	printf("%c(%d): %d -> ", prev->c, prev->c, encodings[prev->c].n_bits);
 	for (int i = 0; i < sizeof encodings[prev->c].bits / sizeof encodings[prev->c].bits[0]; i++) {
 		encodings[prev->c].bits[i] = 0;
 		printf("0x%016llx ", encodings[prev->c].bits[i]);
 	}
 	printf("\n");
 
-	for (struct character *next; next = pq_dequeue();) {
-		encodings[next->c].n_bits = next->count;
+
+	for (struct character *current; current = pq_dequeue();) {
+		encodings[current->c].n_bits = current->count;
 
 		// copy previous bits over
 		memcpy(
-			encodings[next->c].bits,
+			encodings[current->c].bits,
 			encodings[prev->c].bits,
-			sizeof encodings[next->c].bits
+			sizeof encodings[current->c].bits
 		);
 
+
 		// add 1
-		for (int i = 0; !++encodings[next->c].bits[i++];);
+		for (int i = 0; !++encodings[current->c].bits[i++];);
+
+
+
+		unsigned int shift = encodings[current->c].n_bits - encodings[prev->c].n_bits;
+		// Number of shift bits
+		// copy buffer
+		unsigned int index = (encodings[current->c].n_bits + shift) / TYPE_LEN_BITS;
+		for (
+			int i = encodings[current->c].n_bits / TYPE_LEN_BITS;
+			i >= 0;
+			encodings[current->c].bits[index--] = encodings[current->c].bits[i--]
+		);
 
 		// debug print
-		printf("%c(%d): %d -> ", next->c, next->c, encodings[next->c].n_bits);
-		for (int i = 0; i < sizeof encodings[next->c].bits / sizeof encodings[next->c].bits[0]; i++)
-			printf("0x%016llx ", encodings[next->c].bits[i]);
+		printf("%c(%d): %d -> ", current->c, current->c, encodings[current->c].n_bits);
+		for (int i = 0; i < sizeof encodings[current->c].bits / sizeof encodings[current->c].bits[0]; i++)
+			printf("0x%016llx ", encodings[current->c].bits[i]);
 		printf("\n");
 
-		// TODO: shift by encodings[next->c].n_bits - encodings[prev->c].n_bits
-		prev = next;
+		prev = current;
 	}
 
 	free(buf.ptr);
