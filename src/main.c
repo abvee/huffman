@@ -4,6 +4,7 @@
 #include <string.h>
 #include <math.h>
 #include <ctype.h>
+#include <stdint.h>
 
 #include "common.h"
 #include "p-queue.c"
@@ -17,9 +18,14 @@ struct {
 giant fuck off hash map for every possible character
 */
 unsigned int hash_map[HM_LEN];
+struct {
+	uint64_t bits[HM_LEN / (sizeof(uint64_t) * 8)];
+	uint8_t n_bits;
+} encodings[HM_LEN];
 
 void read_input();
 void print_tree(struct character *current_node, unsigned int lvl);
+void bit_lenghts(struct character *current_node, unsigned int n_bits);
 
 int main(int argc, char *argv[]) {
 	buf.capacity = MAX;
@@ -97,6 +103,39 @@ int main(int argc, char *argv[]) {
 	// current_nodes[0] is the root node
 	print_tree(current_nodes[0], 0);
 
+	// Get bit lengths
+	pq_reset();
+	bit_lenghts(current_nodes[0], 0);
+	pq_print();
+
+	// generate canonical codes
+	struct character *prev = pq_dequeue();
+	encodings[prev->c].n_bits = prev->count;
+	printf("%c(%d): %d ->\n", prev->c, prev->c, encodings[prev->c].n_bits);
+
+	for (int i = 0; i < sizeof encodings[prev->c].bits / sizeof encodings[prev->c].bits[0]; i++) {
+		encodings[prev->c].bits[i] = 0;
+		printf("0x%016llx ", encodings[prev->c].bits[i]);
+	}
+	printf("\n");
+
+	for (struct character *next; next = pq_dequeue();) {
+		encodings[next->c].n_bits = next->count;
+
+		// copy previous bits over
+		memcpy(
+			encodings[next->c].bits,
+			encodings[prev->c].bits,
+			sizeof encodings[next->c].bits
+		);
+
+		// add 1
+		for (int i = 0; ++encodings[next->c].bits[i++];);
+
+		// TODO: shift by encodings[next->c].n_bits - encodings[prev->c].n_bits
+		prev = next;
+	}
+
 	free(buf.ptr);
 	free(tree);
 	return 0;
@@ -128,4 +167,20 @@ void print_tree(struct character *current_node, unsigned int lvl) {
 
 	print_tree(current_node->link.left, lvl + 1);
 	print_tree(current_node->link.right, lvl + 1);
+}
+
+void bit_lenghts(struct character *current_node, unsigned int n_bits) {
+	/*
+	Assume a full binary tree
+	*/
+
+	// check leaf
+	if (!current_node->link.left) {
+		current_node->count = n_bits;
+		pq_enqueue(current_node);
+		return;
+	}
+
+	bit_lenghts(current_node->link.left, n_bits + 1);
+	bit_lenghts(current_node->link.right, n_bits + 1);
 }
