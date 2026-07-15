@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
 	struct character *prev = pq_dequeue();
 	encodings[prev->c].n_bits = prev->count;
 
-	printf("%c(%d): %d -> ", prev->c, prev->c, encodings[prev->c].n_bits);
+	printf("%c(%d): %d ->\t", prev->c, prev->c, encodings[prev->c].n_bits);
 	for (int i = 0; i < sizeof encodings[prev->c].bits / sizeof encodings[prev->c].bits[0]; i++) {
 		encodings[prev->c].bits[i] = 0;
 		printf("0x%016llx ", encodings[prev->c].bits[i]);
@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
 		{
 			unsigned int current_byte = encodings[current->c].n_bits;
 			unsigned int index = (encodings[current->c].n_bits + shift) / TYPE_LEN_BITS;
-			for (int i = current_byte; index > current_byte; index--, i--) {
+			for (int i = current_byte; i && index > current_byte; index--, i--) {
 				encodings[current->c].bits[index] = encodings[current->c].bits[i];
 				encodings[current->c].bits[i] = 0;
 			}
@@ -168,9 +168,9 @@ int main(int argc, char *argv[]) {
 
 		// debug print
 		if (current->c > ' ' && current->c <= '~')
-			printf("%c(%d): %d -> ", current->c, current->c, encodings[current->c].n_bits);
+			printf("%c(%d): %d ->\t", current->c, current->c, encodings[current->c].n_bits);
 		else
-			printf("(%d): %d -> ", current->c, encodings[current->c].n_bits);
+			printf("(%d): %d ->\t", current->c, encodings[current->c].n_bits);
 		for (int i = 0; i < sizeof encodings[current->c].bits / sizeof encodings[current->c].bits[0]; i++)
 			printf("0x%016llx ", encodings[current->c].bits[i]);
 		printf("\n");
