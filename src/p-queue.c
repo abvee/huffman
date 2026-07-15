@@ -36,6 +36,9 @@ struct character *pq_dequeue() {
 
 void pq_print() {
 	for (int i = front; i < back; i++)
-		printf("%c(%d):%d ", queue[i]->c, queue[i]->c, queue[i]->count);
+		if (queue[i]->c > ' ' && queue[i]->c <= '~')
+			printf("%c(%d):%d ", queue[i]->c, queue[i]->c, queue[i]->count);
+		else
+			printf("(%d):%d ", queue[i]->c, queue[i]->count);
 	printf("\n");
 }
