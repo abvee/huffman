@@ -137,20 +137,40 @@ int main(int argc, char *argv[]) {
 		// add 1
 		for (int i = 0; !++encodings[current->c].bits[i++];);
 
-
-
+		// shift bits
 		unsigned int shift = encodings[current->c].n_bits - encodings[prev->c].n_bits;
-		// Number of shift bits
-		// copy buffer
-		unsigned int index = (encodings[current->c].n_bits + shift) / TYPE_LEN_BITS;
-		for (
-			int i = encodings[current->c].n_bits / TYPE_LEN_BITS;
-			i >= 0;
-			encodings[current->c].bits[index--] = encodings[current->c].bits[i--]
-		);
+
+		/*
+		Okay, so basically if shift > 64, we have a problem. Shifting by > 64
+		bits means we lose the everything in that array cell.
+
+		So, we compute where we'll end up if we were to shift there, copy the
+		bytes over then shift by (shift % TYPE_LEN_BITS)
+		*/
+		{
+			unsigned int current_byte = encodings[current->c].n_bits;
+			unsigned int index = (encodings[current->c].n_bits + shift) / TYPE_LEN_BITS;
+			for (int i = current_byte; index > current_byte; index--, i--) {
+				encodings[current->c].bits[index] = encodings[current->c].bits[i];
+				encodings[current->c].bits[i] = 0;
+			}
+		}
+
+		// TODO: see if if (shift) here helps performance...
+		shift &= TYPE_LEN_BITS - 1;
+		for (int i = 1; i < HM_LEN / TYPE_LEN_BITS; i++) {
+			encodings[current->c].bits[i] =
+				(encodings[current->c].bits[i] << shift)
+				|
+				(encodings[current->c].bits[i - 1] >> (TYPE_LEN_BITS - shift - 1));
+		}
+		encodings[current->c].bits[0] <<= shift;
 
 		// debug print
-		printf("%c(%d): %d -> ", current->c, current->c, encodings[current->c].n_bits);
+		if (current->c > ' ' && current->c <= '~')
+			printf("%c(%d): %d -> ", current->c, current->c, encodings[current->c].n_bits);
+		else
+			printf("(%d): %d -> ", current->c, encodings[current->c].n_bits);
 		for (int i = 0; i < sizeof encodings[current->c].bits / sizeof encodings[current->c].bits[0]; i++)
 			printf("0x%016llx ", encodings[current->c].bits[i]);
 		printf("\n");
