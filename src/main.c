@@ -29,6 +29,7 @@ int main(int argc, char *argv[]) {
 	printf("Buffer capacity: %d\n", buf.capacity);
 
 	unsigned long bits = encode(buf.ptr, buf.len);
+	printf("Compression Ratio: %.3f\n", (buf.len - 1) * sizeof *buf.ptr * 8 / (float) bits);
 	free(buf.ptr);
 	return 0;
 }

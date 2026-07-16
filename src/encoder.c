@@ -49,7 +49,7 @@ unsigned long encode(char *buf, unsigned int buf_len) {
 
 	// Get bit lengths from tree
 	pq_reset();
-	bit_lenghts(root, 0);
+	bit_lenghts(root, 0, &op_len);
 	pq_print();
 
 	// write canon codes to encodings[]
@@ -98,6 +98,7 @@ inline void bit_lenghts(
 
 	// check leaf
 	if (!current_node->link.left) {
+		n_bits = n_bits?n_bits:n_bits+1; // handle 0 entropy edge case
 		*op_len += current_node->count * n_bits;
 		current_node->count = n_bits;
 		pq_enqueue(current_node);
@@ -206,13 +207,17 @@ static inline void gen_canon_codes() {
 			}
 		}
 
-		// TODO: see if if (shift) here helps performance...
+		/*
+		now we handle the remaining shift % 64 bits of shifting
+		Note that if shift & 64 is 0, then TYPE_LEN_BITS - shift is UB (can't
+		shift 64 bits)
+		*/
 		shift &= TYPE_LEN_BITS - 1;
-		for (int i = 1; i < HM_LEN / TYPE_LEN_BITS; i++) {
+		if (shift) for (int i = 1; i < HM_LEN / TYPE_LEN_BITS; i++) {
 			encodings[current->c].bits[i] =
 				(encodings[current->c].bits[i] << shift)
 				|
-				(encodings[current->c].bits[i - 1] >> (TYPE_LEN_BITS - shift - 1));
+				(encodings[current->c].bits[i - 1] >> (TYPE_LEN_BITS - shift));
 		}
 		encodings[current->c].bits[0] <<= shift;
 
