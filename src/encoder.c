@@ -3,7 +3,11 @@
 #include "p-queue.c"
 
 void print_tree(struct character *current_node, unsigned int lvl);
-static inline void bit_lenghts(struct character *current_node, unsigned int n_bits);
+static inline void bit_lenghts(
+	struct character *current_node,
+	unsigned int n_bits,
+	unsigned long *op_len
+);
 static inline struct character *build_tree(struct character *tree);
 static inline void gen_canon_codes();
 
@@ -22,8 +26,10 @@ enum { TYPE_LEN_BITS = sizeof encodings[0].bits[0] * 8 };
 
 unsigned long encode(char *buf, unsigned int buf_len) {
 	/*
-	Build the huffman tree, generate canonical encodings and return length in bits
+	Build the huffman tree, generate canonical encodings and output length in
+	bits
 	*/
+	unsigned long op_len = 0;
 
 	/*
 	count of all the unique characters
@@ -58,7 +64,7 @@ unsigned long encode(char *buf, unsigned int buf_len) {
 	I expect to get standard library or OS or processor help with this ?
 	*/
 	free(tree);
-	return 0; // placeholder
+	return op_len; // placeholder
 }
 
 void print_tree(struct character *current_node, unsigned int lvl) {
@@ -77,20 +83,29 @@ void print_tree(struct character *current_node, unsigned int lvl) {
 	print_tree(current_node->link.right, lvl + 1);
 }
 
-inline void bit_lenghts(struct character *current_node, unsigned int n_bits) {
+/*
+Calculate bit lengths needed for canonical code book generation.
+Also do frequency of symbols * bit length for total output length in bits
+*/
+inline void bit_lenghts(
+	struct character *current_node,
+	unsigned int n_bits,
+	unsigned long *op_len
+) {
 	/*
 	Assume a full binary tree
 	*/
 
 	// check leaf
 	if (!current_node->link.left) {
+		*op_len += current_node->count * n_bits;
 		current_node->count = n_bits;
 		pq_enqueue(current_node);
 		return;
 	}
 
-	bit_lenghts(current_node->link.left, n_bits + 1);
-	bit_lenghts(current_node->link.right, n_bits + 1);
+	bit_lenghts(current_node->link.left, n_bits + 1, op_len);
+	bit_lenghts(current_node->link.right, n_bits + 1, op_len);
 }
 
 static inline struct character *build_tree(struct character *tree) {

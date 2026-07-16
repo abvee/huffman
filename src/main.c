@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
 	printf("Input length: %d\n", buf.len);
 	printf("Buffer capacity: %d\n", buf.capacity);
 
-	encode(buf.ptr, buf.len);
+	unsigned long bits = encode(buf.ptr, buf.len);
 	free(buf.ptr);
 	return 0;
 }
