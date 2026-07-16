@@ -10,7 +10,7 @@
 #include "encoder.c"
 
 struct {
-	signed char *ptr;
+	char *ptr;
 	unsigned int capacity;
 	unsigned int len;
 } buf = {NULL, 0, 0}; // general purpose buffer
@@ -19,7 +19,7 @@ void read_input();
 
 int main(int argc, char *argv[]) {
 	buf.capacity = MAX;
-	memset(hash_map, 0, HM_LEN);
+	memset(hash_map, 0, HM_LEN * sizeof *hash_map);
 
 	// handles all the buffer stuff
 	read_input();
