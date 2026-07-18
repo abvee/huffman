@@ -5,7 +5,7 @@
 I wanted to make this a dynamic array, but if we're hardcoding the hash map as
 a direct map, might as well do the same for the priority queue
 */
-static struct character *queue[HM_LEN];
+static struct character *queue[TREE_MAX];
 static unsigned int front = 0, back = 0;
 
 void pq_reset() {
@@ -14,14 +14,14 @@ void pq_reset() {
 
 bool pq_enqueue(struct character *c) {
 	// overflow
-	if (back >= HM_LEN) return false;
+	if (back >= sizeof queue/sizeof *queue) return false;
 	
 	// enqueue the actual character
 	int i = front;
 	for (; i < back && queue[i]->count <= c->count; i++);
 	back++;
 
-	for (int j = back; j != i; j--)
+	for (int j = back - 1; j != i; j--)
 		queue[j] = queue[j-1];
 
 	queue[i] = c;

@@ -19,5 +19,6 @@ struct character {
 enum {MAX = 128};
 
 constexpr unsigned int HM_LEN = pow(2, sizeof(char) * 8);
+constexpr unsigned int TREE_MAX = 2 * HM_LEN - 1;
 
 #endif
