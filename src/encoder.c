@@ -2,7 +2,7 @@
 #include "common.h"
 #include "p-queue.c"
 
-void print_tree(struct character *current_node, unsigned int lvl);
+static void print_tree(struct character *current_node, unsigned int lvl);
 static inline void bit_lenghts(
 	struct character *current_node,
 	unsigned int n_bits,
@@ -10,6 +10,7 @@ static inline void bit_lenghts(
 );
 static inline struct character *build_tree(struct character *tree);
 static inline void gen_canon_codes();
+static unsigned int count_unique_characters(byte *buf, unsigned int buf_len);
 
 /*
 giant fuck off hash map for every possible character, and similar strategy for
@@ -31,15 +32,7 @@ unsigned long encode(byte *buf, unsigned int buf_len) {
 	*/
 	unsigned long op_len = 0;
 
-	/*
-	count of all the unique characters
-	*/
-	unsigned int char_count = 0;
-	for (int i = 0; i < buf_len - 1; i++) {
-		if (!hash_map[buf[i]]) char_count++;
-		hash_map[buf[i]] += 1;
-	}
-
+	unsigned int char_count = count_unique_characters(buf, buf_len);
 	// full binary tree needs 2n - 1 nodes (n - 1 internal, n external)
 	struct character *tree = malloc(sizeof*tree * (2 * char_count - 1));
 	struct character *root = build_tree(tree);
@@ -54,20 +47,24 @@ unsigned long encode(byte *buf, unsigned int buf_len) {
 
 	// write canon codes to encodings[]
 	gen_canon_codes();
-	// serialize the encodings and write to file
-	/*
-	Serialization will have to be in reverse order of the array, with last
-	viable index written first.
 
-	Since each uint64_t is also little endian encoded, I can't just write the
-	bytes directly, inside each unint64_t I would also need to go last to first.
-	I expect to get standard library or OS or processor help with this ?
-	*/
 	free(tree);
 	return op_len; // placeholder
 }
 
-void print_tree(struct character *current_node, unsigned int lvl) {
+static unsigned int count_unique_characters(byte *buf, unsigned int buf_len) {
+	/*
+	fill hash map with unique characters and count unique characters
+	*/
+	unsigned int char_count = 0;
+	for (int i = 0; i < buf_len - 1; i++) {
+		if (!hash_map[buf[i]]) char_count++;
+		hash_map[buf[i]] += 1;
+	}
+	return char_count;
+} 
+
+static void print_tree(struct character *current_node, unsigned int lvl) {
 	if (!current_node) return;
 	// print at correct depth
 	for (int i = 0; i < (int) lvl - 1; i++)
