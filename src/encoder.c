@@ -196,12 +196,12 @@ static inline void gen_canon_codes() {
 		bits means we lose the everything in that array cell.
 
 		So, we compute where we'll end up if we were to shift there, copy the
-		bytes over then shift by (shift % TYPE_LEN_BITS)
+		bytes over. Only then do we shift by (shift % TYPE_LEN_BITS)
 		*/
 		{
 			unsigned int current_byte = encodings[current->c].n_bits;
 			unsigned int index = (encodings[current->c].n_bits + shift) / TYPE_LEN_BITS;
-			for (int i = current_byte; i && index > current_byte; index--, i--) {
+			for (int i = current_byte; i >= 0 && index > current_byte; index--, i--) {
 				encodings[current->c].bits[index] = encodings[current->c].bits[i];
 				encodings[current->c].bits[i] = 0;
 			}
@@ -209,8 +209,8 @@ static inline void gen_canon_codes() {
 
 		/*
 		now we handle the remaining shift % 64 bits of shifting
-		Note that if shift & 64 is 0, then TYPE_LEN_BITS - shift is UB (can't
-		shift 64 bits)
+		Note that if shift % 64 is 0, then TYPE_LEN_BITS - shift is UB (can't
+		shift 64 bits) hence the if (shift)
 		*/
 		shift &= TYPE_LEN_BITS - 1;
 		if (shift) for (int i = 1; i < HM_LEN / TYPE_LEN_BITS; i++) {
