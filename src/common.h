@@ -1,5 +1,9 @@
 #ifndef PROJECT_COMMON
 #define PROJECT_COMMON
+
+#include <stdint.h>
+typedef uint8_t byte;
+
 // character to store in p_queue
 struct treelink {
 	struct character *left;
@@ -7,7 +11,7 @@ struct treelink {
 };
 
 struct character {
-	char c; // idk if this is signed or unsigned, I just need it to store a raw byte
+	byte c;
 	unsigned int count;
 	struct treelink link;
 };
@@ -15,4 +19,5 @@ struct character {
 enum {MAX = 128};
 
 constexpr unsigned int HM_LEN = pow(2, sizeof(char) * 8);
+
 #endif

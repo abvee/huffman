@@ -10,7 +10,7 @@
 #include "encoder.c"
 
 struct {
-	char *ptr;
+	byte *ptr;
 	unsigned int capacity;
 	unsigned int len;
 } buf = {NULL, 0, 0}; // general purpose buffer
@@ -23,6 +23,7 @@ int main(int argc, char *argv[]) {
 
 	// handles all the buffer stuff
 	read_input();
+
 	// debug
 	// printf("%s", buf.ptr); // not good for long inputs
 	printf("Input length: %d\n", buf.len);
@@ -37,11 +38,13 @@ int main(int argc, char *argv[]) {
 // read input into buf
 void read_input() {
 	buf.ptr = malloc(sizeof *buf.ptr * buf.capacity);
-	do {
-		while (buf.len < buf.capacity && (buf.ptr[buf.len++] = getc(stdin)) != EOF);
 
-		if (buf.len >= buf.capacity && buf.ptr[buf.len - 1] != EOF)
+	int ch = 0; // getc(stdin) returns an integer, EOF == -1
+	while (ch != EOF) {
+		while (buf.len < buf.capacity && (ch = getc(stdin)) != EOF)
+			buf.ptr[buf.len++] = ch;
+
+		if (buf.len >= buf.capacity  && ch != EOF)
 			buf.ptr = realloc(buf.ptr, sizeof *buf.ptr * (buf.capacity *= 2));
-	} while (buf.ptr[buf.len - 1] != EOF);
-	buf.ptr[buf.len - 1] = '\0';
+	}
 }

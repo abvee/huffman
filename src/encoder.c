@@ -24,7 +24,7 @@ static struct {
 
 enum { TYPE_LEN_BITS = sizeof encodings[0].bits[0] * 8 };
 
-unsigned long encode(char *buf, unsigned int buf_len) {
+unsigned long encode(byte *buf, unsigned int buf_len) {
 	/*
 	Build the huffman tree, generate canonical encodings and output length in
 	bits
