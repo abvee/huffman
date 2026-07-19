@@ -9,8 +9,12 @@ static inline void bit_lenghts(
 	unsigned long *op_len
 );
 static inline struct character *build_tree(struct character *tree);
-static inline void gen_canon_codes();
-static unsigned int count_unique_characters(byte *buf, unsigned int buf_len);
+static inline void gen_canon_codes(byte op_buffer[]);
+static inline unsigned int count_unique_characters(
+	byte *buf,
+	unsigned int buf_len
+);
+static inline void serialize(byte *buf, unsigned int buf_len, FILE *stream);
 
 /*
 giant fuck off hash map for every possible character, and similar strategy for
@@ -25,7 +29,7 @@ static struct {
 
 enum { TYPE_LEN_BITS = sizeof encodings[0].bits[0] * 8 };
 
-unsigned long encode(byte *buf, unsigned int buf_len) {
+void encode(byte *buf, unsigned int buf_len) {
 	/*
 	Build the huffman tree, generate canonical encodings and output length in
 	bits
@@ -43,16 +47,29 @@ unsigned long encode(byte *buf, unsigned int buf_len) {
 	// Get bit lengths from tree
 	pq_reset();
 	bit_lenghts(root, 0, &op_len);
+	printf("Compression Ratio: %.3f\n", (buf_len - 1) * sizeof *buf * 8 / (float) op_len);
 	pq_print();
 
+	byte *op_buffer = malloc(
+		1 + // char_count
+		(sizeof(byte) * 2 * char_count) + // each of the characters
+		(op_len / 8 * sizeof(byte))
+	);
+	op_buffer[0] = char_count - 1; // 0 -> 255
+
 	// write canon codes to encodings[]
-	gen_canon_codes();
+	// dequeues the priority queue, so this function also has to write the
+	// canon lengths to the output buffer
+	gen_canon_codes(op_buffer);
 
 	free(tree);
-	return op_len; // placeholder
+	free(op_buffer);
 }
 
-static unsigned int count_unique_characters(byte *buf, unsigned int buf_len) {
+static inline unsigned int count_unique_characters(
+	byte *buf,
+	unsigned int buf_len
+) {
 	/*
 	fill hash map with unique characters and count unique characters
 	*/
@@ -160,10 +177,17 @@ static inline struct character *build_tree(struct character *tree) {
 }
 
 // generate canonical codes and fill in encodings[]
-static inline void gen_canon_codes() {
+static inline void gen_canon_codes(byte op_buffer[]) {
 	struct character *prev = pq_dequeue();
+	// write to output buffer
+	unsigned int op_buf_i = 1;
+	op_buffer[op_buf_i] = prev->c;
+	op_buffer[op_buf_i + 1] = prev->count;
+	op_buf_i += 2;
+
 	encodings[prev->c].n_bits = prev->count;
 
+	// debug print
 	printf("%c(%d): %d ->\t", prev->c, prev->c, encodings[prev->c].n_bits);
 	for (int i = 0; i < sizeof encodings[prev->c].bits / sizeof encodings[prev->c].bits[0]; i++) {
 		encodings[prev->c].bits[i] = 0;
@@ -173,6 +197,11 @@ static inline void gen_canon_codes() {
 
 
 	for (struct character *current; current = pq_dequeue();) {
+		// write to output buffer
+		op_buffer[op_buf_i] = current->c;
+		op_buffer[op_buf_i + 1] = current->count;
+		op_buf_i += 2;
+
 		encodings[current->c].n_bits = current->count;
 
 		// copy previous bits over
@@ -229,4 +258,7 @@ static inline void gen_canon_codes() {
 
 		prev = current;
 	}
+}
+
+static inline void serialize(byte *buf, unsigned int buf_len, FILE *stream) {
 }
