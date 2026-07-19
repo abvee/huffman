@@ -19,10 +19,11 @@ bool pq_enqueue(struct character *c) {
 	// enqueue the actual character
 	int i = front;
 	for (; i < back && queue[i]->count <= c->count; i++);
-	back++;
 
-	for (int j = back - 1; j != i; j--)
+	for (int j = back; j != i; j--)
 		queue[j] = queue[j-1];
+
+	back++;
 
 	queue[i] = c;
 	return true;
