@@ -17,7 +17,12 @@ static inline unsigned int count_unique_characters(
 	byte *buf,
 	unsigned int buf_len
 );
-static inline void serialize(byte *buf, unsigned int buf_len, FILE *stream);
+static inline void serialize(
+	byte *in_buffer,
+	unsigned int in_buffer_len,
+	byte *op_buffer, // assume the op buffer has enough space
+	FILE *stream
+);
 
 /*
 giant fuck off hash map for every possible character, and similar strategy for
@@ -26,7 +31,10 @@ the encodings
 static unsigned int hash_map[HM_LEN];
 
 static struct {
-	uint64_t bits[HM_LEN / (sizeof(uint64_t) * 8)];
+	union {
+		uint64_t bits[HM_LEN / (sizeof(uint64_t) * 8)];
+		byte raw_bytes[HM_LEN / sizeof(byte) * 8];
+	};
 	uint8_t n_bits;
 } encodings[HM_LEN];
 
@@ -59,6 +67,7 @@ void encode(byte *buf, unsigned int buf_len) {
 		(op_len / 8 * sizeof(byte))
 	);
 	op_buffer[0] = char_count - 1; // 0 -> 255
+	unsigned int op_buf_i = 1;
 
 	// dequeue each character, write pair lengths to op_buffer and generate canon codes
 	struct character *prev = pq_dequeue();
@@ -67,7 +76,6 @@ void encode(byte *buf, unsigned int buf_len) {
 	memset(encodings[prev->c].bits, 0, sizeof encodings[prev->c].bits);
 
 	// write to output buffer
-	unsigned int op_buf_i = 1;
 	op_buffer[op_buf_i] = prev->c;
 	op_buffer[op_buf_i + 1] = prev->count;
 	op_buf_i += 2;
@@ -87,7 +95,7 @@ void encode(byte *buf, unsigned int buf_len) {
 		gen_canon_codes(current, prev);
 
 		// debug print
-		if (current->c > ' ' && current->c <= '~')
+		if (isalnum(current->c))
 			printf("%c(%d): %d ->\t", current->c, current->c, encodings[current->c].n_bits);
 		else
 			printf("(%d): %d ->\t", current->c, encodings[current->c].n_bits);
@@ -95,6 +103,8 @@ void encode(byte *buf, unsigned int buf_len) {
 			printf("0x%016lx ", encodings[current->c].bits[i]);
 		printf("\n");
 	}
+
+	serialize(buf, buf_len, op_buffer + op_buf_i, stdout);
 
 	free(tree);
 	free(op_buffer);
@@ -262,5 +272,36 @@ static inline void gen_canon_codes(
 	encodings[c_in].bits[0] <<= shift;
 }
 
-static inline void serialize(byte *buf, unsigned int buf_len, FILE *stream) {
+static inline void serialize(
+	byte *in_buffer,
+	unsigned int in_buffer_len,
+	byte *op_buffer, // assume the op buffer has enough space
+	FILE *stream
+) {
+
+	printf("\n--Serialization--\n");
+	for (unsigned int i = 0; i < in_buffer_len; i++) {
+		unsigned int encoding_byte =
+			encodings[in_buffer[i]].n_bits / sizeof encodings[in_buffer[0]].raw_bytes[0];
+		unsigned int difference =
+			encodings[in_buffer[i]].n_bits & (sizeof encodings[in_buffer[0]].raw_bytes[0] - 1);
+
+		if (difference) encoding_byte++;
+
+		// debug print
+		if (isalnum(in_buffer[i]))
+			printf("%c(%d): %d ->\t", in_buffer[i], in_buffer[i], encodings[in_buffer[i]].n_bits);
+		else
+			printf("(%d): %d ->\t", in_buffer[i], encodings[in_buffer[i]].n_bits);
+		for (int j = 0; j < sizeof encodings[0].bits / sizeof encodings[0].bits[0]; j++)
+			printf("0x%016lx ", encodings[in_buffer[i]].bits[j]);
+		printf("\n");
+
+		for (int j = encoding_byte; j >= 0; j--) {
+			 // TODO: write bytes to output buffer here
+			 /*
+			 Can do a bit accumulator or something like that
+			 */
+		}
+	}
 }
