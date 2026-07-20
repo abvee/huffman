@@ -21,8 +21,7 @@ static inline unsigned int count_unique_characters(
 static inline void serialize(
 	byte *in_buffer,
 	unsigned int in_buffer_len,
-	byte *op_buffer, // assume the op buffer has enough space
-	FILE *stream
+	byte *op_buffer // assume the op buffer has enough space
 );
 
 /*
@@ -102,7 +101,13 @@ void encode(byte *buf, unsigned int buf_len) {
 		printf("\n");
 	}
 
-	serialize(buf, buf_len, op_buffer + op_buf_i, stdout);
+	serialize(buf, buf_len, op_buffer + op_buf_i);
+	fwrite(
+		op_buffer,
+		sizeof *op_buffer,
+		1 + (sizeof *op_buffer * 2 * char_count) + (op_len / 8 * sizeof *op_buffer) + 1,
+		stderr
+	);
 
 	free(tree);
 	free(op_buffer);
@@ -325,8 +330,7 @@ static inline void ac_flush(byte *op_buffer) {
 static inline void serialize(
 	byte *in_buffer,
 	unsigned int in_buffer_len,
-	byte *op_buffer, // assume the op buffer has enough space
-	FILE *stream
+	byte *op_buffer // assume the op buffer has enough space
 ) {
 	accumulator.ac = 0;
 
