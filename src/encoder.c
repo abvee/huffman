@@ -31,14 +31,11 @@ the encodings
 static unsigned int hash_map[HM_LEN];
 
 static struct {
-	union {
-		uint64_t bits[HM_LEN / (sizeof(uint64_t) * 8)];
-		byte raw_bytes[HM_LEN / sizeof(byte) * 8];
-	};
+	uint64_t bits[HM_LEN / (sizeof(uint64_t) * 8)];
 	uint8_t n_bits;
 } encodings[HM_LEN];
 
-enum { TYPE_LEN_BITS = sizeof encodings[0].bits[0] * 8 };
+enum { TYPE_LEN_BITS = sizeof *(*encodings).bits * 8 };
 
 void encode(byte *buf, unsigned int buf_len) {
 	/*
@@ -49,7 +46,7 @@ void encode(byte *buf, unsigned int buf_len) {
 
 	unsigned int char_count = count_unique_characters(buf, buf_len);
 	// full binary tree needs 2n - 1 nodes (n - 1 internal, n external)
-	struct character *tree = malloc(sizeof*tree * (2 * char_count - 1));
+	struct character *tree = malloc(sizeof *tree * (2 * char_count - 1));
 	struct character *root = build_tree(tree);
 
 	printf("Tree top: %d\nUnique character count: %d\n", 2 * char_count - 1, char_count);
@@ -63,8 +60,8 @@ void encode(byte *buf, unsigned int buf_len) {
 
 	byte *op_buffer = malloc(
 		1 + // char_count
-		(sizeof(byte) * 2 * char_count) + // each of the characters
-		(op_len / 8 * sizeof(byte))
+		(sizeof *op_buffer * 2 * char_count) + // each of the characters
+		(op_len / 8 * sizeof *op_buffer) + 1 // all the output
 	);
 	op_buffer[0] = char_count - 1; // 0 -> 255
 	unsigned int op_buf_i = 1;
@@ -73,7 +70,7 @@ void encode(byte *buf, unsigned int buf_len) {
 	struct character *prev = pq_dequeue();
 	// 0 initial encoding
 	encodings[prev->c].n_bits = prev->count;
-	memset(encodings[prev->c].bits, 0, sizeof encodings[prev->c].bits);
+	memset(encodings[prev->c].bits, 0, sizeof (*encodings).bits);
 
 	// write to output buffer
 	op_buffer[op_buf_i] = prev->c;
@@ -82,7 +79,7 @@ void encode(byte *buf, unsigned int buf_len) {
 
 	// debug print
 	printf("%c(%d): %d ->\t", prev->c, prev->c, encodings[prev->c].n_bits);
-	for (int i = 0; i < sizeof encodings[prev->c].bits / sizeof encodings[prev->c].bits[0]; i++)
+	for (int i = 0; i < sizeof (*encodings).bits / sizeof *(*encodings).bits; i++)
 		printf("0x%016lx ", encodings[prev->c].bits[i]);
 	printf("\n");
 
@@ -99,12 +96,12 @@ void encode(byte *buf, unsigned int buf_len) {
 			printf("%c(%d): %d ->\t", current->c, current->c, encodings[current->c].n_bits);
 		else
 			printf("(%d): %d ->\t", current->c, encodings[current->c].n_bits);
-		for (int i = 0; i < sizeof encodings[current->c].bits / sizeof encodings[current->c].bits[0]; i++)
+		for (int i = 0; i < sizeof (*encodings).bits / sizeof *(*encodings).bits; i++)
 			printf("0x%016lx ", encodings[current->c].bits[i]);
 		printf("\n");
 	}
 
-	serialize(buf, buf_len, op_buffer + op_buf_i, stdout);
+	// serialize(buf, buf_len, op_buffer + op_buf_i, stdout);
 
 	free(tree);
 	free(op_buffer);
@@ -232,7 +229,7 @@ static inline void gen_canon_codes(
 	memcpy(
 		encodings[c_in].bits,
 		encodings[prev->c].bits,
-		sizeof encodings[c_in].bits
+		sizeof (*encodings).bits
 	);
 
 	// add 1
@@ -278,30 +275,15 @@ static inline void serialize(
 	byte *op_buffer, // assume the op buffer has enough space
 	FILE *stream
 ) {
-
 	printf("\n--Serialization--\n");
 	for (unsigned int i = 0; i < in_buffer_len; i++) {
-		unsigned int encoding_byte =
-			encodings[in_buffer[i]].n_bits / sizeof encodings[in_buffer[0]].raw_bytes[0];
-		unsigned int difference =
-			encodings[in_buffer[i]].n_bits & (sizeof encodings[in_buffer[0]].raw_bytes[0] - 1);
-
-		if (difference) encoding_byte++;
-
 		// debug print
 		if (isalnum(in_buffer[i]))
 			printf("%c(%d): %d ->\t", in_buffer[i], in_buffer[i], encodings[in_buffer[i]].n_bits);
 		else
 			printf("(%d): %d ->\t", in_buffer[i], encodings[in_buffer[i]].n_bits);
-		for (int j = 0; j < sizeof encodings[0].bits / sizeof encodings[0].bits[0]; j++)
+		for (int j = 0; j < sizeof (*encodings).bits / sizeof *(*encodings).bits; j++)
 			printf("0x%016lx ", encodings[in_buffer[i]].bits[j]);
 		printf("\n");
-
-		for (int j = encoding_byte; j >= 0; j--) {
-			 // TODO: write bytes to output buffer here
-			 /*
-			 Can do a bit accumulator or something like that
-			 */
-		}
 	}
 }
