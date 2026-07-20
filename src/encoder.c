@@ -358,5 +358,15 @@ static inline void serialize(
 		if (accumulator.i >= AC_BIT_LEN)
 			ac_flush(op_buffer);
 	}
-	// TODO: flush whatever remains in the accumulator
+
+	// flush whatever remains in the accumulator
+	unsigned int modulo = accumulator.i & (sizeof *accumulator.raw_bytes * 8 - 1);
+	for (
+		int i = accumulator.i / (sizeof (*encodings).bits / *(*encodings).bits);
+		i--;
+	) {
+		*op_buffer = accumulator.raw_bytes[i] << sizeof *accumulator.raw_bytes * 8 - modulo;
+		*op_buffer++ |= accumulator.raw_bytes[i - 1] >> modulo;
+	}
+	*op_buffer = accumulator.raw_bytes[0] << sizeof *accumulator.raw_bytes * 8 - modulo;
 }
