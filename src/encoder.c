@@ -58,11 +58,17 @@ void encode(byte *buf, unsigned int buf_len) {
 	printf("Compression Ratio: %.3f\n", (buf_len - 1) * sizeof *buf * 8 / (float) op_len);
 	pq_print();
 
-	byte *op_buffer = malloc(
+	byte *op_buffer;
+	const unsigned int op_buf_len =
 		1 + // char_count
 		(sizeof *op_buffer * 2 * char_count) + // each of the characters
-		(op_len / 8 * sizeof *op_buffer) + 1 // all the output
-	);
+		(op_len / 8 * sizeof *op_buffer) + 1; // all the output
+
+	printf("Output buffer length: %u\n", op_buf_len);
+	printf("Header buffer length: %lu\n", op_buf_len - ((op_len / 8 * sizeof *op_buffer) + 1));
+	printf("Only output length: %lu\n", (op_len / 8 * sizeof *op_buffer) + 1);
+
+	op_buffer = malloc(op_buf_len);
 	op_buffer[0] = char_count - 1; // 0 -> 255
 	unsigned int op_buf_i = 1;
 
@@ -105,9 +111,10 @@ void encode(byte *buf, unsigned int buf_len) {
 	fwrite(
 		op_buffer,
 		sizeof *op_buffer,
-		1 + (sizeof *op_buffer * 2 * char_count) + (op_len / 8 * sizeof *op_buffer) + 1,
+		op_buf_len,
 		stderr
 	);
+	fflush(stderr);
 
 	free(tree);
 	free(op_buffer);
@@ -121,7 +128,7 @@ static inline unsigned int count_unique_characters(
 	fill hash map with unique characters and count unique characters
 	*/
 	unsigned int char_count = 0;
-	for (int i = 0; i < buf_len - 1; i++) {
+	for (int i = 0; i < buf_len; i++) {
 		if (!hash_map[buf[i]]) char_count++;
 		hash_map[buf[i]] += 1;
 	}
@@ -287,34 +294,32 @@ enum {
 	AC_BIT_LEN = sizeof accumulator.ac * 8,
 };
 
-static inline unsigned long ac_shift(
-	unsigned int shift_amount,
+static inline void ac_fill(
 	byte encode_index,
 	unsigned int n_bits
 ) {
-	assert(shift_amount < AC_BIT_LEN - 1);
+	/*
+	The goal of this function is to specifically fill the accumulator fully, not
+	to be used as a general purpose shift function
+	*/
+
 	/*
 	We should never be given a shift amount that's greater than the number of
 	bits left to encode for that character
 	*/
-	assert(shift_amount >= n_bits);
+	unsigned int shift_amount = AC_BIT_LEN - (accumulator.i + 1);
+	assert(shift_amount <= n_bits);
 
 	accumulator.ac <<= shift_amount;
 
-	unsigned int encode_byte_index = n_bits / TYPE_LEN_BITS;
-
-	// will never trigger if encode_byte_index is 0 thanks to above assert
-	if (n_bits & (TYPE_LEN_BITS - 1) < shift_amount) {
+	if (n_bits % TYPE_LEN_BITS < shift_amount) {
 		accumulator.ac |=
-			encodings[encode_index].bits[encode_byte_index] << (shift_amount - (n_bits & (TYPE_LEN_BITS - 1)));
-		encode_index -= 1;
-
-		shift_amount -= n_bits & (TYPE_LEN_BITS - 1);
+			encodings[encode_index].bits[n_bits / TYPE_LEN_BITS] << (shift_amount - (n_bits % TYPE_LEN_BITS ));
+		shift_amount -= n_bits % TYPE_LEN_BITS;
 	}
 
 	accumulator.ac |=
-		encodings[encode_index].bits[encode_byte_index] >> (TYPE_LEN_BITS - shift_amount);
-	return accumulator.i + shift_amount;
+		encodings[encode_index].bits[n_bits / TYPE_LEN_BITS] >> (n_bits - shift_amount);
 }
 
 static inline void ac_flush(byte *op_buffer) {
@@ -325,6 +330,7 @@ static inline void ac_flush(byte *op_buffer) {
 		i--
 	) *op_buffer++ = accumulator.raw_bytes[i];
 	accumulator.i = 0;
+	accumulator.ac = 0;
 }
 
 static inline void serialize(
@@ -332,24 +338,16 @@ static inline void serialize(
 	unsigned int in_buffer_len,
 	byte *op_buffer // assume the op buffer has enough space
 ) {
-	accumulator.ac = 0;
-
 	printf("\n--Serialization--\n");
 	for (unsigned int i = 0; i < in_buffer_len; i++) {
+
 		// debug print
-		if (isalnum(in_buffer[i]))
-			printf("%c(%d): %d ->\t", in_buffer[i], in_buffer[i], encodings[in_buffer[i]].n_bits);
-		else
-			printf("(%d): %d ->\t", in_buffer[i], encodings[in_buffer[i]].n_bits);
-		for (int j = 0; j < sizeof (*encodings).bits / sizeof *(*encodings).bits; j++)
-			printf("0x%016lx ", encodings[in_buffer[i]].bits[j]);
-		printf("\n");
-
 		unsigned int n_bits = encodings[in_buffer[i]].n_bits;
-		while (n_bits >= AC_BIT_LEN - (accumulator.i + 1)) {
 
-			// shift by some number of bits
-			ac_shift(AC_BIT_LEN - (accumulator.i + 1), in_buffer[i], n_bits);
+		while (n_bits > AC_BIT_LEN - (accumulator.i + 1)) {
+			// fill the accumulator and flush
+			ac_fill(in_buffer[i], n_bits);
+
 			n_bits -= AC_BIT_LEN - (accumulator.i + 1);
 
 			ac_flush(op_buffer);
@@ -357,16 +355,28 @@ static inline void serialize(
 		}
 
 		// shift remaining bits
-		ac_shift(n_bits, in_buffer[i], n_bits);
+		accumulator.ac <<= n_bits;
+		accumulator.i += n_bits;
+		// TODO: this assert might only work on x64, see how to make platform and
+		// accumulator size independent
+		assert(n_bits / TYPE_LEN_BITS == 0);
 
-		if (accumulator.i >= AC_BIT_LEN)
-			ac_flush(op_buffer);
+		/*
+		At this point, there as n_bits that are less than the space left in
+		accumulator.
+
+		The index (n_bits / TYPE_LEN_BITS) HAS to be 0 because there's no other
+		way
+		*/
+		if (n_bits < encodings[in_buffer[i]].n_bits) assert(accumulator.ac == 0);
+		accumulator.ac |=
+			encodings[in_buffer[i]].bits[n_bits / TYPE_LEN_BITS];
 	}
 
 	// flush whatever remains in the accumulator
 	unsigned int modulo = accumulator.i & (sizeof *accumulator.raw_bytes * 8 - 1);
 	for (
-		int i = accumulator.i / (sizeof (*encodings).bits / *(*encodings).bits);
+		int i = accumulator.i / (sizeof (*encodings).bits / sizeof *(*encodings).bits);
 		i--;
 	) {
 		*op_buffer = accumulator.raw_bytes[i] << sizeof *accumulator.raw_bytes * 8 - modulo;
