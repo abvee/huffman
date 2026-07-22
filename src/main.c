@@ -17,9 +17,22 @@ struct {
 
 void read_input();
 
-int main(int argc, char *argv[]) {
-	buf.capacity = MAX;
+void decode(byte *buf, uint buf_len) {}
 
+int main(int argc, char *argv[]) {
+	// commandline arguments
+	while (--argc > 0)
+		if (argv[argc][0] == '-')
+			for (uint i = 1; argv[argc][i]; i++)
+				switch (argv[argc][i]) {
+					case 'p':
+						print_flag = true;
+						break;
+					case 'd':
+						decode_flag = true;
+						break;
+				}
+	buf.capacity = MAX;
 	// handles all the buffer stuff
 	read_input();
 
@@ -28,7 +41,9 @@ int main(int argc, char *argv[]) {
 	f_printf("Input length: %d\n", buf.len);
 	f_printf("Buffer capacity: %d\n", buf.capacity);
 
-	encode(buf.ptr, buf.len);
+	if (decode_flag) decode(buf.ptr, buf.len);
+	else encode(buf.ptr, buf.len);
+
 	free(buf.ptr);
 	return 0;
 }
