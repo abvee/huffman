@@ -111,8 +111,14 @@ void encode(byte *buf, unsigned int buf_len) {
 
 	printf("\nSerializer\n");
 	uint op_written_len = serialize(buf, buf_len, op_buffer + op_buf_i);
-	// this ^ is an index
 	assert(op_written_len == (op_len / 8 * sizeof *op_buffer) + 1);
+
+	fwrite(
+		op_buffer,
+		sizeof *op_buffer,
+		op_buf_len,
+		stdout
+	);
 
 	free(tree);
 	free(op_buffer);
@@ -301,7 +307,7 @@ static inline void ac_flush(byte *op_buffer) {
 }
 
 static uint serialize(byte *in_buffer, unsigned int in_buf_len, byte *op_buffer) {
-	unsigned int op_buffer_i = 0; // index
+	uint op_buffer_i = 0; // index
 
 	for (unsigned int i = 0; i < in_buf_len; i++) {
 		// debug print
@@ -340,18 +346,23 @@ static uint serialize(byte *in_buffer, unsigned int in_buf_len, byte *op_buffer)
 	printf("Accumulator runs: %lu\n", op_buffer_i / sizeof accumulator.ac);
 
 	// flush the accumulator
-	uint mod = accumulator.i % (sizeof *accumulator.raw_bytes * 8);
+	constexpr uint BYTE_BIT_LEN = sizeof *accumulator.raw_bytes * 8;
+	uint mod = BYTE_BIT_LEN - (accumulator.i % BYTE_BIT_LEN) - 1;
+	// remaining space in that byte ^
+
 	for (
-		uint byte_index = accumulator.i / (sizeof *accumulator.raw_bytes * 8);
+		uint byte_index = accumulator.i / BYTE_BIT_LEN;
 		byte_index;
 		byte_index--
-	) *op_buffer++ =
+	) {
+		op_buffer[op_buffer_i++] =
 		accumulator.raw_bytes[byte_index] << mod
 		|
-		accumulator.raw_bytes[byte_index - 1] >> (sizeof *accumulator.raw_bytes * 8 - mod);
-	*op_buffer |= accumulator.raw_bytes[0] << mod;
+		accumulator.raw_bytes[byte_index - 1] >> BYTE_BIT_LEN - mod;
+	}
+	op_buffer[op_buffer_i++] = accumulator.raw_bytes[0] << mod;
+	// the ++ just makes it so that op_buffer_i is now the length
 
-	op_buffer_i += accumulator.i / (sizeof *accumulator.raw_bytes * 8) + 1;
 	printf("Total output length: %u\n", op_buffer_i);
 	return op_buffer_i;
 }
