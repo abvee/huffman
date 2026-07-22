@@ -112,7 +112,7 @@ void encode(byte *buf, unsigned int buf_len) {
 	printf("\nSerializer\n");
 	uint op_written_len = serialize(buf, buf_len, op_buffer + op_buf_i);
 	// this ^ is an index
-	assert(op_written_len + 1 == (op_len / 8 * sizeof *op_buffer) + 1);
+	assert(op_written_len == (op_len / 8 * sizeof *op_buffer) + 1);
 
 	free(tree);
 	free(op_buffer);
@@ -337,6 +337,21 @@ static uint serialize(byte *in_buffer, unsigned int in_buf_len, byte *op_buffer)
 		// accumulator debug
 		printf("%064lb: %d\n", accumulator.ac, accumulator.i);
 	}
-	printf("Output buffer length: %u\n", op_buffer_i);
+	printf("Accumulator runs: %lu\n", op_buffer_i / sizeof accumulator.ac);
+
+	// flush the accumulator
+	uint mod = accumulator.i % (sizeof *accumulator.raw_bytes * 8);
+	for (
+		uint byte_index = accumulator.i / (sizeof *accumulator.raw_bytes * 8);
+		byte_index;
+		byte_index--
+	) *op_buffer++ =
+		accumulator.raw_bytes[byte_index] << mod
+		|
+		accumulator.raw_bytes[byte_index - 1] >> (sizeof *accumulator.raw_bytes * 8 - mod);
+	*op_buffer |= accumulator.raw_bytes[0] << mod;
+
+	op_buffer_i += accumulator.i / (sizeof *accumulator.raw_bytes * 8) + 1;
+	printf("Total output length: %u\n", op_buffer_i);
 	return op_buffer_i;
 }
