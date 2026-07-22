@@ -19,15 +19,14 @@ void read_input();
 
 int main(int argc, char *argv[]) {
 	buf.capacity = MAX;
-	memset(hash_map, 0, HM_LEN * sizeof *hash_map);
 
 	// handles all the buffer stuff
 	read_input();
 
 	// debug
-	// printf("%s", buf.ptr); // not good for long inputs
-	printf("Input length: %d\n", buf.len);
-	printf("Buffer capacity: %d\n", buf.capacity);
+	// f_printf("%s", buf.ptr); // not good for long inputs
+	f_printf("Input length: %d\n", buf.len);
+	f_printf("Buffer capacity: %d\n", buf.capacity);
 
 	encode(buf.ptr, buf.len);
 	free(buf.ptr);

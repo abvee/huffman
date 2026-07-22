@@ -45,19 +45,20 @@ void encode(byte *buf, unsigned int buf_len) {
 	bits
 	*/
 	unsigned long op_len = 0;
+	memset(hash_map, 0, HM_LEN * sizeof *hash_map);
 
 	unsigned int char_count = count_unique_characters(buf, buf_len);
 	// full binary tree needs 2n - 1 nodes (n - 1 internal, n external)
 	struct character *tree = malloc(sizeof *tree * (2 * char_count - 1));
 	struct character *root = build_tree(tree);
 
-	printf("Tree top: %d\nUnique character count: %d\n", 2 * char_count - 1, char_count);
+	f_printf("Tree top: %d\nUnique character count: %d\n", 2 * char_count - 1, char_count);
 	print_tree(root, 0);
 
 	// Get bit lengths from tree
 	pq_reset();
 	bit_lenghts(root, 0, &op_len);
-	printf("Compression Ratio: %.3f\n", (buf_len - 1) * sizeof *buf * 8 / (float) op_len);
+	f_printf("Compression Ratio: %.3f\n", (buf_len - 1) * sizeof *buf * 8 / (float) op_len);
 	pq_print();
 
 	byte *op_buffer;
@@ -66,9 +67,9 @@ void encode(byte *buf, unsigned int buf_len) {
 		(sizeof *op_buffer * 2 * char_count) + // each of the characters
 		(op_len / 8 * sizeof *op_buffer) + 1; // all the output
 
-	printf("\nOutput buffer length: %u\n", op_buf_len);
-	printf("Header buffer length: %lu\n", op_buf_len - ((op_len / 8 * sizeof *op_buffer) + 1));
-	printf("Only output length: %lu\n", (op_len / 8 * sizeof *op_buffer) + 1);
+	f_printf("\nOutput buffer length: %u\n", op_buf_len);
+	f_printf("Header buffer length: %lu\n", op_buf_len - ((op_len / 8 * sizeof *op_buffer) + 1));
+	f_printf("Only output length: %lu\n", (op_len / 8 * sizeof *op_buffer) + 1);
 
 	op_buffer = malloc(op_buf_len);
 	op_buffer[0] = char_count - 1; // 0 -> 255
@@ -86,10 +87,10 @@ void encode(byte *buf, unsigned int buf_len) {
 	op_buf_i += 2;
 
 	// debug print
-	printf("%c(%d): %d ->\t", prev->c, prev->c, encodings[prev->c].n_bits);
+	f_printf("%c(%d): %d ->\t", prev->c, prev->c, encodings[prev->c].n_bits);
 	for (int i = 0; i < sizeof (*encodings).bits / sizeof *(*encodings).bits; i++)
-		printf("0x%016lx ", encodings[prev->c].bits[i]);
-	printf("\n");
+		f_printf("0x%016lx ", encodings[prev->c].bits[i]);
+	f_printf("\n");
 
 	for (struct character *current; current = pq_dequeue(); prev = current) {
 		// write to output buffer
@@ -101,15 +102,15 @@ void encode(byte *buf, unsigned int buf_len) {
 
 		// debug print
 		if (isalnum(current->c))
-			printf("%c(%d): %d ->\t", current->c, current->c, encodings[current->c].n_bits);
+			f_printf("%c(%d): %d ->\t", current->c, current->c, encodings[current->c].n_bits);
 		else
-			printf("(%d): %d ->\t", current->c, encodings[current->c].n_bits);
+			f_printf("(%d): %d ->\t", current->c, encodings[current->c].n_bits);
 		for (int i = 0; i < sizeof (*encodings).bits / sizeof *(*encodings).bits; i++)
-			printf("0x%016lx ", encodings[current->c].bits[i]);
-		printf("\n");
+			f_printf("0x%016lx ", encodings[current->c].bits[i]);
+		f_printf("\n");
 	}
 
-	printf("\nSerializer\n");
+	f_printf("\nSerializer\n");
 	uint op_written_len = serialize(buf, buf_len, op_buffer + op_buf_i);
 	assert(op_written_len == (op_len / 8 * sizeof *op_buffer) + 1);
 
@@ -143,13 +144,13 @@ static void print_tree(struct character *current_node, unsigned int lvl) {
 	if (!current_node) return;
 	// print at correct depth
 	for (int i = 0; i < (int) lvl - 1; i++)
-		printf("|\t");
-	if (lvl) printf("|----");
+		f_printf("|\t");
+	if (lvl) f_printf("|----");
 
 	if (isalnum(current_node->c))
-		printf("%c(%d):%u\n", current_node->c, current_node->c, current_node->count);
+		f_printf("%c(%d):%u\n", current_node->c, current_node->c, current_node->count);
 	else
-		printf("(%d):%d\n", current_node->c, current_node->count);
+		f_printf("(%d):%d\n", current_node->c, current_node->count);
 
 	print_tree(current_node->link.left, lvl + 1);
 	print_tree(current_node->link.right, lvl + 1);
@@ -312,9 +313,9 @@ static uint serialize(byte *in_buffer, unsigned int in_buf_len, byte *op_buffer)
 	for (unsigned int i = 0; i < in_buf_len; i++) {
 		// debug print
 		if (isalnum(in_buffer[i]))
-			printf("%d: %c(%d): %d\t", i, in_buffer[i], in_buffer[i], encodings[in_buffer[i]].n_bits);
+			f_printf("%d: %c(%d): %d\t", i, in_buffer[i], in_buffer[i], encodings[in_buffer[i]].n_bits);
 		else
-			printf("%d: (%d): %d\t", i, in_buffer[i], encodings[in_buffer[i]].n_bits);
+			f_printf("%d: (%d): %d\t", i, in_buffer[i], encodings[in_buffer[i]].n_bits);
 
 		unsigned int n_bits = encodings[in_buffer[i]].n_bits;
 
@@ -341,9 +342,9 @@ static uint serialize(byte *in_buffer, unsigned int in_buf_len, byte *op_buffer)
 		accumulator.ac |= encodings[in_buffer[i]].bits[0];
 
 		// accumulator debug
-		printf("%064lb: %d\n", accumulator.ac, accumulator.i);
+		f_printf("%064lb: %d\n", accumulator.ac, accumulator.i);
 	}
-	printf("Accumulator runs: %lu\n", op_buffer_i / sizeof accumulator.ac);
+	f_printf("Accumulator runs: %lu\n", op_buffer_i / sizeof accumulator.ac);
 
 	// flush the accumulator
 	constexpr uint BYTE_BIT_LEN = sizeof *accumulator.raw_bytes * 8;
@@ -363,6 +364,6 @@ static uint serialize(byte *in_buffer, unsigned int in_buf_len, byte *op_buffer)
 	op_buffer[op_buffer_i++] = accumulator.raw_bytes[0] << mod;
 	// the ++ just makes it so that op_buffer_i is now the length
 
-	printf("Total output length: %u\n", op_buffer_i);
+	f_printf("Total output length: %u\n", op_buffer_i);
 	return op_buffer_i;
 }
