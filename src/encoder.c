@@ -68,8 +68,9 @@ void encode(byte *buf, unsigned int buf_len) {
 		(op_len / 8 * sizeof *op_buffer) + 1; // all the output
 
 	f_printf("\nOutput buffer length: %u\n", op_buf_len);
-	f_printf("Header buffer length: %lu\n", op_buf_len - ((op_len / 8 * sizeof *op_buffer) + 1));
-	f_printf("Only output length: %lu\n", (op_len / 8 * sizeof *op_buffer) + 1);
+	f_printf("Header buffer length: %lu\n", op_buf_len - (op_len + (8-1)) / 8 * sizeof *op_buffer);
+	f_printf("Only output length: %lu\n", (op_len + (8-1)) / 8 * sizeof *op_buffer);
+	// ceil (a / b) == a + (b - 1) // b
 
 	op_buffer = malloc(op_buf_len);
 	op_buffer[0] = char_count - 1; // 0 -> 255
@@ -112,7 +113,7 @@ void encode(byte *buf, unsigned int buf_len) {
 
 	f_printf("\nSerializer\n");
 	uint op_written_len = serialize(buf, buf_len, op_buffer + op_buf_i);
-	assert(op_written_len == (op_len / 8 * sizeof *op_buffer) + 1);
+	assert(op_written_len == (op_len + (8-1)) / 8 * sizeof *op_buffer);
 
 	fwrite(
 		op_buffer,
