@@ -19,6 +19,13 @@ static inline unsigned int count_unique_characters(
 	unsigned int buf_len
 );
 
+static uint serialize(
+	byte *in_buffer,
+	unsigned int in_buf_len,
+	byte *op_buffer
+);
+
+
 /*
 giant fuck off hash map for every possible character, and similar strategy for
 the encodings
@@ -59,7 +66,7 @@ void encode(byte *buf, unsigned int buf_len) {
 		(sizeof *op_buffer * 2 * char_count) + // each of the characters
 		(op_len / 8 * sizeof *op_buffer) + 1; // all the output
 
-	printf("Output buffer length: %u\n", op_buf_len);
+	printf("\nOutput buffer length: %u\n", op_buf_len);
 	printf("Header buffer length: %lu\n", op_buf_len - ((op_len / 8 * sizeof *op_buffer) + 1));
 	printf("Only output length: %lu\n", (op_len / 8 * sizeof *op_buffer) + 1);
 
@@ -102,7 +109,10 @@ void encode(byte *buf, unsigned int buf_len) {
 		printf("\n");
 	}
 
-	// serialize();
+	printf("\nSerializer\n");
+	uint op_written_len = serialize(buf, buf_len, op_buffer + op_buf_i);
+	// this ^ is an index
+	assert(op_written_len + 1 == (op_len / 8 * sizeof *op_buffer) + 1);
 
 	free(tree);
 	free(op_buffer);
@@ -268,4 +278,65 @@ static inline void gen_canon_codes(
 			(encodings[c_in].bits[i - 1] >> (TYPE_LEN_BITS - shift));
 	}
 	encodings[c_in].bits[0] <<= shift;
+}
+
+struct {
+	union {
+		uint64_t ac;
+		byte raw_bytes[sizeof(uint64_t)];
+	};
+	int i; // index
+} accumulator = {.ac = 0, .i = -1};
+
+enum { AC_BIT_LEN = sizeof accumulator.ac * 8 };
+
+static inline void ac_flush(byte *op_buffer) {
+	for (
+		int i = sizeof accumulator.raw_bytes / sizeof *accumulator.raw_bytes;
+		i--;
+	) *op_buffer++ = accumulator.raw_bytes[i];
+
+	accumulator.ac = 0;
+	accumulator.i = -1;
+}
+
+static uint serialize(byte *in_buffer, unsigned int in_buf_len, byte *op_buffer) {
+	unsigned int op_buffer_i = 0; // index
+
+	for (unsigned int i = 0; i < in_buf_len; i++) {
+		// debug print
+		if (isalnum(in_buffer[i]))
+			printf("%d: %c(%d): %d\t", i, in_buffer[i], in_buffer[i], encodings[in_buffer[i]].n_bits);
+		else
+			printf("%d: (%d): %d\t", i, in_buffer[i], encodings[in_buffer[i]].n_bits);
+
+		unsigned int n_bits = encodings[in_buffer[i]].n_bits;
+
+		while (n_bits > AC_BIT_LEN - (accumulator.i + 1)) {
+			accumulator.ac <<= AC_BIT_LEN - (accumulator.i + 1);
+
+			accumulator.ac |=
+				encodings[in_buffer[i]].bits[n_bits / TYPE_LEN_BITS]
+				>>
+				(n_bits - (AC_BIT_LEN - (accumulator.i + 1)));
+
+			n_bits -= AC_BIT_LEN - (accumulator.i + 1);
+
+			ac_flush(op_buffer + op_buffer_i);
+			op_buffer_i += sizeof accumulator.ac;
+		}
+
+		/*
+		Since the size of the accumulator == sizeof encodings[].bits[0], we
+		handle only index 0 here.
+		*/
+		accumulator.ac <<= n_bits;
+		accumulator.i += n_bits;
+		accumulator.ac |= encodings[in_buffer[i]].bits[0];
+
+		// accumulator debug
+		printf("%064lb: %d\n", accumulator.ac, accumulator.i);
+	}
+	printf("Output buffer length: %u\n", op_buffer_i);
+	return op_buffer_i;
 }
