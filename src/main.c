@@ -8,6 +8,7 @@
 
 #include "common.h"
 #include "encoder.c"
+#include "decoder.c"
 
 struct {
 	byte *ptr;
@@ -16,8 +17,6 @@ struct {
 } buf = {NULL, 0, 0}; // general purpose buffer
 
 void read_input();
-
-void decode(byte *buf, uint buf_len) {}
 
 int main(int argc, char *argv[]) {
 	// commandline arguments

@@ -1,6 +1,9 @@
 #include "common.h"
 #include <stdio.h>
 
+#ifndef PROJECT_PQ
+#define PROJECT_PQ
+
 /*
 I wanted to make this a dynamic array, but if we're hardcoding the hash map as
 a direct map, might as well do the same for the priority queue
@@ -43,3 +46,5 @@ void pq_print() {
 			f_printf("(%d):%d ", queue[i]->c, queue[i]->count);
 	f_printf("\n");
 }
+
+#endif
