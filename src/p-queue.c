@@ -1,8 +1,9 @@
+#ifndef PROJECT_PQ
+#define PROJECT_PQ
+
 #include "common.h"
 #include <stdio.h>
 
-#ifndef PROJECT_PQ
-#define PROJECT_PQ
 
 /*
 I wanted to make this a dynamic array, but if we're hardcoding the hash map as

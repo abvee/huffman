@@ -2,6 +2,7 @@
 #include <assert.h>
 #include "common.h"
 #include "p-queue.c"
+#include "canon-codes.c"
 
 static void print_tree(struct character *current_node, unsigned int lvl);
 static inline void bit_lenghts(
@@ -10,15 +11,10 @@ static inline void bit_lenghts(
 	unsigned long *op_len
 );
 static inline struct character *build_tree(struct character *tree);
-static inline void gen_canon_codes(
-	struct character *current,
-	struct character *prev
-);
 static inline unsigned int count_unique_characters(
 	byte *buf,
 	unsigned int buf_len
 );
-
 static uint serialize(
 	byte *in_buffer,
 	unsigned int in_buf_len,
@@ -31,13 +27,6 @@ giant fuck off hash map for every possible character, and similar strategy for
 the encodings
 */
 static unsigned int hash_map[HM_LEN];
-
-static struct {
-	uint64_t bits[HM_LEN / (sizeof(uint64_t) * 8)];
-	uint8_t n_bits;
-} encodings[HM_LEN];
-
-enum { TYPE_LEN_BITS = sizeof *(*encodings).bits * 8 };
 
 void encode(byte *buf, unsigned int buf_len) {
 	/*
@@ -234,58 +223,6 @@ static inline struct character *build_tree(struct character *tree) {
 		pq_enqueue(&tree[top++]);
 	}
 	return current_nodes[0];
-}
-
-// generate canonical codes and fill in encodings[]
-static inline void gen_canon_codes(
-	struct character *current,
-	struct character *prev
-) {
-	unsigned int c_in = current->c;
-	encodings[c_in].n_bits = current->count;
-
-	// copy previous bits over
-	memcpy(
-		encodings[c_in].bits,
-		encodings[prev->c].bits,
-		sizeof (*encodings).bits
-	);
-
-	// add 1
-	for (int i = 0; !++encodings[c_in].bits[i++];);
-
-	// shift bits
-	unsigned int shift = encodings[c_in].n_bits - encodings[prev->c].n_bits;
-
-	/*
-	Okay, so basically if shift > 64, we have a problem. Shifting by > 64
-	bits means we lose the everything in that array cell.
-
-	So, we compute where we'll end up if we were to shift there, copy the
-	bytes over. Only then do we shift by (shift % TYPE_LEN_BITS)
-	*/
-	{
-		unsigned int current_byte = encodings[c_in].n_bits;
-		unsigned int index = (encodings[c_in].n_bits + shift) / TYPE_LEN_BITS;
-		for (int i = current_byte; i >= 0 && index > current_byte; index--, i--) {
-			encodings[c_in].bits[index] = encodings[c_in].bits[i];
-			encodings[c_in].bits[i] = 0;
-		}
-	}
-
-	/*
-	now we handle the remaining shift % 64 bits of shifting
-	Note that if shift % 64 is 0, then TYPE_LEN_BITS - shift is UB (can't
-	shift 64 bits) hence the if (shift)
-	*/
-	shift &= TYPE_LEN_BITS - 1;
-	if (shift) for (int i = 1; i < HM_LEN / TYPE_LEN_BITS; i++) {
-		encodings[c_in].bits[i] =
-			(encodings[c_in].bits[i] << shift)
-			|
-			(encodings[c_in].bits[i - 1] >> (TYPE_LEN_BITS - shift));
-	}
-	encodings[c_in].bits[0] <<= shift;
 }
 
 struct {
