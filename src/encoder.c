@@ -255,15 +255,20 @@ static uint serialize(byte *in_buffer, unsigned int in_buf_len, byte *op_buffer)
 		else
 			f_printf("%d: (%d): %d\t", i, in_buffer[i], encodings[in_buffer[i]].n_bits);
 
-		unsigned int n_bits = encodings[in_buffer[i]].n_bits;
+		uint n_bits = encodings[in_buffer[i]].n_bits;
+		assert(n_bits > 0); // every input HAS to have an encodings buffer
 
 		while (n_bits > AC_BIT_LEN - (accumulator.i + 1)) {
 			accumulator.ac <<= AC_BIT_LEN - (accumulator.i + 1);
 
 			accumulator.ac |=
-				encodings[in_buffer[i]].bits[n_bits / TYPE_LEN_BITS]
+				encodings[in_buffer[i]].bits[(n_bits - 1) / TYPE_LEN_BITS]
 				>>
 				(n_bits - (AC_BIT_LEN - (accumulator.i + 1)));
+			/*
+			NOTE: n_bits - 1 to handle n_bits == 64
+			n_bits cannot be 0
+			*/
 
 			n_bits -= AC_BIT_LEN - (accumulator.i + 1);
 
