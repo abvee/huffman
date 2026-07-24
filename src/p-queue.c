@@ -1,9 +1,5 @@
-#ifndef PROJECT_PQ
-#define PROJECT_PQ
-
 #include "common.h"
 #include <stdio.h>
-
 
 /*
 I wanted to make this a dynamic array, but if we're hardcoding the hash map as
@@ -41,11 +37,9 @@ struct character *pq_dequeue() {
 
 void pq_print() {
 	for (int i = front; i < back; i++)
-		if (queue[i]->c > ' ' && queue[i]->c <= '~')
+		if (isalnum(queue[i]->c))
 			f_printf("%c(%d):%d ", queue[i]->c, queue[i]->c, queue[i]->count);
 		else
 			f_printf("(%d):%d ", queue[i]->c, queue[i]->count);
 	f_printf("\n");
 }
-
-#endif
