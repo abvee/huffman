@@ -1,7 +1,6 @@
 #include <ctype.h>
 #include <assert.h>
 #include "common.h"
-#include "p-queue.c"
 #include "canon-codes.c"
 
 /*
@@ -29,6 +28,8 @@ struct {
 	uint r_index; // how many more excluding .start are present in this bit range
 } bit_ranges[HM_LEN];
 
+static uint bit_marker[HM_LEN]; // indexes start locations
+
 static inline uint read_characters(
 	struct character *characters,
 	byte *buf,
@@ -36,11 +37,12 @@ static inline uint read_characters(
 );
 
 void decode(byte *buf, uint buf_len) {
-	// Init bit_ranges
+	// Init bit_ranges and decode_hash_map
 	for (uint i = 0; i < sizeof bit_ranges / sizeof *bit_ranges; i++) {
 		bit_ranges[i].start = NULL;
 		bit_ranges[i].r_index = 0;
 	}
+	memset(bit_marker, 0,sizeof bit_marker);
 
 	// Start reading input
 	uint char_count = buf[0] + 1; // 0 -> 255
@@ -49,41 +51,39 @@ void decode(byte *buf, uint buf_len) {
 
 	struct character *characters = malloc(sizeof *characters * char_count);
 	uint max_bit_len = read_characters(characters, buf + buf_i, char_count);
+	// characters is now a sorted array
 	buf_i += 2 * char_count;
-
 
 	/*
 	Generate canon codes
 	*/
-	struct character *prev = pq_dequeue();
-	// 0 initial encoding
-	encodings[prev->c].n_bits = prev->count;
-	memset(encodings[prev->c].bits, 0, sizeof (*encodings).bits);
+	memset(encodings[characters[0].c].bits, 0, sizeof (*encodings).bits);
 
 	// bit ranges
-	uint bit_range_index = prev->count - 1; // current index of bit_ranges
-	bit_ranges[bit_range_index].start = &encodings[prev->c].bits;
+	uint bit_range_index = characters[0].count; // current index of bit_ranges
+	bit_ranges[bit_range_index].start = &encodings[characters[0].c].bits;
 
-	for (struct character *current; current = pq_dequeue(); prev = current) {
-		gen_canon_codes(current, prev);
+	for (uint i = 1; i < char_count; i++) {
+		gen_canon_codes(characters + i, characters + i - 1);
 
-		if (bit_range_index != current->count - 1) {
-			f_printf("Bit len changed from %u to %u\n", bit_range_index + 1, current->count);
+		if (bit_range_index != characters[i].count - 1) {
+			f_printf("Bit len changed from %u to %u\n", bit_range_index + 1, characters[i].count);
 
-			bit_range_index = current->count - 1;
-			bit_ranges[bit_range_index].start = &encodings[current->c].bits;
+			// bit_ranges stuff
+			bit_range_index = characters[i].count - 1;
+			bit_ranges[bit_range_index].start = &encodings[characters[i].c].bits;
 
 			// new bit started, the len should be 0
 			assert(bit_ranges[bit_range_index].r_index == 0);
 		} else bit_ranges[bit_range_index].r_index++;
 
 		// debug print
-		if (isalnum(current->c))
-			f_printf("%c(%d): %d ->\t", current->c, current->c, encodings[current->c].n_bits);
+		if (isalnum(characters[i].c))
+			f_printf("%c(%d): %d ->\t", characters[i].c, characters[i].c, encodings[characters[i].c].n_bits);
 		else
-			f_printf("(%d): %d ->\t", current->c, encodings[current->c].n_bits);
+			f_printf("(%d): %d ->\t", characters[i].c, encodings[characters[i].c].n_bits);
 		for (int i = 0; i < sizeof (*encodings).bits / sizeof *(*encodings).bits; i++)
-			f_printf("0x%016lx ", encodings[current->c].bits[i]);
+			f_printf("0x%016lx ", encodings[characters[i].c].bits[i]);
 		f_printf("\n");
 	}
 
@@ -97,11 +97,12 @@ static inline uint read_characters(
 	uint char_count
 ) {
 	/*
-	Read the characters and enter them to the priority queue
-	Return max bit length found
+	Read the characters and enter them to buffer in a sorted order (insertion
+	sort). Return max bit length found
 	*/
 	uint max_bit_len = 0;
 	uint buf_i = 0;
+
 	// count characters and put them in a priority queue
 	for (
 		uint characters_i = 0;
@@ -115,16 +116,33 @@ static inline uint read_characters(
 		else
 			f_printf("(%d):%d\n", buf[buf_i], buf[buf_i + 1]);
 
-		characters[characters_i] = (struct character) {
+		const uint count = buf[buf_i + 1];
+
+		if (max_bit_len < count)
+			max_bit_len = count;
+
+		uint i = characters_i;
+		for (; i > 0 && count < characters[i].count; i--)
+			characters[i] = characters[i - 1];
+		characters[i] = (struct character) {
 			.c = buf[buf_i],
 			.count = buf[buf_i + 1],
 			{NULL, NULL}
 		};
-
-		if (max_bit_len < characters[characters_i].count)
-			max_bit_len = characters[characters_i].count;
-		pq_enqueue(characters + characters_i);
 	}
-	pq_print();
+
+	// debug print characters array
+	for (int i  = 0; i < char_count; i++)
+		if (isalnum(characters[i].c))
+			f_printf(
+				"%c(%d):%d ",
+				characters[i].c,
+				characters[i].c,
+				characters[i].count
+			);
+		else
+			f_printf("(%d):%d ", characters[i].c, characters[i].count);
+	f_printf("\n");
+
 	return max_bit_len;
 }

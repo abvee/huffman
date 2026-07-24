@@ -16,8 +16,8 @@ enum { TYPE_LEN_BITS = sizeof *(*encodings).bits * 8 };
 
 // generate canonical codes and fill in encodings[]
 static inline void gen_canon_codes(
-	struct character *current,
-	struct character *prev
+	const struct character *const current,
+	const struct character *const prev
 ) {
 	unsigned int c_in = current->c;
 	encodings[c_in].n_bits = current->count;
