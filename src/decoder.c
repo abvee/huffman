@@ -122,8 +122,10 @@ static inline uint read_characters(
 			max_bit_len = count;
 
 		uint i = characters_i;
-		for (; i > 0 && count < characters[i].count; i--)
+		for (; i > 0 && count < characters[i - 1].count; i--)
 			characters[i] = characters[i - 1];
+		f_printf("Placing at position: %u\n", i);
+
 		characters[i] = (struct character) {
 			.c = buf[buf_i],
 			.count = buf[buf_i + 1],
@@ -132,7 +134,7 @@ static inline uint read_characters(
 	}
 
 	// debug print characters array
-	for (int i  = 0; i < char_count; i++)
+	for (int i = 0; i < char_count; i++)
 		if (isalnum(characters[i].c))
 			f_printf(
 				"%c(%d):%d ",
