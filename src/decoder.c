@@ -60,14 +60,22 @@ void decode(byte *buf, uint buf_len) {
 	memset(encodings[characters[0].c].bits, 0, sizeof (*encodings).bits);
 
 	// bit ranges
-	uint bit_range_index = characters[0].count; // current index of bit_ranges
+	uint bit_range_index = characters[0].count - 1; // current index of bit_ranges
 	bit_ranges[bit_range_index].start = &encodings[characters[0].c].bits;
+	bit_marker[bit_range_index] = 0;
 
 	for (uint i = 1; i < char_count; i++) {
 		gen_canon_codes(characters + i, characters + i - 1);
 
 		if (bit_range_index != characters[i].count - 1) {
 			f_printf("Bit len changed from %u to %u\n", bit_range_index + 1, characters[i].count);
+			f_printf(
+				"Number of %u bit characters: %u\n",
+				bit_range_index + 1,
+				bit_ranges[bit_range_index].r_index + 1
+			);
+			bit_marker[bit_range_index] = i;
+			f_printf("Bit marker placed at %u\n", i);
 
 			// bit_ranges stuff
 			bit_range_index = characters[i].count - 1;
