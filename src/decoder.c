@@ -28,20 +28,27 @@ struct {
 	uint r_index; // how many more excluding .start are present in this bit range
 	uint marker;
 } bit_ranges[HM_LEN];
+struct {
+	uint stk[HM_LEN];
+	uint top;
+} bit_lens;
 
 static inline void read_characters(
 	struct character *characters,
 	byte *buf,
 	uint char_count
 );
+void deserialize(byte *buf, uint buf_len);
 
 void decode(byte *buf, uint buf_len) {
-	// Init bit_ranges and decode_hash_map
+	// init bit_ranges and decode_hash_map
 	for (uint i = 0; i < sizeof bit_ranges / sizeof *bit_ranges; i++) {
 		bit_ranges[i].start = NULL;
 		bit_ranges[i].r_index = 0;
 		bit_ranges[i].marker = 0;
 	}
+	memset(bit_lens.stk, 0, sizeof bit_lens.stk);
+	bit_lens.top = 0;
 
 	// Start reading input
 	uint char_count = buf[0] + 1; // 0 -> 255
@@ -64,6 +71,7 @@ void decode(byte *buf, uint buf_len) {
 	bit_ranges[bit_range_index].start = &encodings[characters[0].c].bits;
 	bit_ranges[bit_range_index].marker = 0;
 
+	// debug print
 	if (isalnum(characters[0].c))
 		f_printf("%c(%d): %d ->\t", characters[0].c, characters[0].c, encodings[characters[0].c].n_bits);
 	else
@@ -74,8 +82,15 @@ void decode(byte *buf, uint buf_len) {
 
 	for (uint i = 1; i < char_count; i++) {
 		gen_canon_codes(characters + i, characters + i - 1);
+		// TODO: Redundancy, encodings[i].n_bits is the same as character.count
+		// Remove them by modifying canon-codes.c
 
 		if (bit_range_index != characters[i].count - 1) {
+
+			bit_lens.stk[bit_lens.top++] = bit_range_index + 1;
+			// store which bit lengths exist in ascending order
+			// This stack CANNOT overflow, there can only ever be 256 bits
+
 			f_printf("Bit len changed from %u to %u\n", bit_range_index + 1, characters[i].count);
 			f_printf(
 				"Number of %u bit characters: %u\n",
@@ -83,7 +98,7 @@ void decode(byte *buf, uint buf_len) {
 				bit_ranges[bit_range_index].r_index + 1
 			);
 			bit_ranges[bit_range_index].marker = i;
-			f_printf("Bit marker placed at %u\n", i);
+			f_printf("Bit marker for %u placed at %u\n", bit_range_index + 1, i);
 
 			// bit_ranges stuff
 			bit_range_index = characters[i].count - 1;
@@ -91,19 +106,20 @@ void decode(byte *buf, uint buf_len) {
 
 			// new bit started, the len should be 0
 			assert(bit_ranges[bit_range_index].r_index == 0);
+
 		} else bit_ranges[bit_range_index].r_index++;
 
 		// debug print
 		if (isalnum(characters[i].c))
-			f_printf("%c(%d): %d ->\t", characters[i].c, characters[i].c, encodings[characters[i].c].n_bits);
+			f_printf("%c(%d): %d ->\t", characters[i].c, characters[i].c, characters[i].count);
 		else
-			f_printf("(%d): %d ->\t", characters[i].c, encodings[characters[i].c].n_bits);
+			f_printf("(%d): %d ->\t", characters[i].c, characters[i].count);
 		for (int j = 0; j < sizeof (*encodings).bits / sizeof *(*encodings).bits; j++)
 			f_printf("0x%016lx ", encodings[characters[i].c].bits[j]);
 		f_printf("\n");
 	}
 
-	// start reading
+	deserialize(buf + buf_i, buf_len);
 	free(characters);
 }
 
@@ -157,4 +173,76 @@ static inline void read_characters(
 		else
 			f_printf("(%d):%d ", characters[i].c, characters[i].count);
 	f_printf("\n");
+}
+
+// deserializer
+static inline void read_in(
+	byte *input,
+	uint bit_i,
+	u256 *buf,
+	uint n_bits
+);
+
+void deserialize(byte *buf, uint buf_len) {
+	assert(bit_lens.top <= sizeof bit_lens.stk / sizeof *bit_lens.stk);
+
+	uint buf_i = 0;
+	uint bit_i = 0; // intra byte index
+	// indexes next free, not current top
+
+	u256 read_buf;
+	memset(read_buf.a, 0, sizeof read_buf.a);
+
+	for (;buf_i < buf_len;) {
+		for (uint j = 0; j < bit_lens.top; j++) {
+			read_in(
+				buf + buf_i,
+				bit_i,
+				&read_buf,
+				bit_lens.stk[j]
+			);
+		}
+	}
+}
+
+// read n_bits into buffer
+
+/*
+The input encoded data HAS to be byte aligned or this crashes. The last byte
+NEEDS to have padding in it
+*/
+inline void read_in(
+	byte *input,
+	uint bit_i,
+	u256 *buf,
+	uint n_bits
+) {
+	// NOTE: the input has no bounds check, please make sure caller doesn't mess
+	// it up
+	assert(n_bits <= HM_LEN);
+	assert(bit_i >= 0 && bit_i < BYTE_BIT_LEN);
+
+	uint i = 0; // byte index
+	for (; n_bits > BYTE_BIT_LEN; i++, n_bits -= BYTE_BIT_LEN, input++)
+		buf->bytes[i] = *input << bit_i | *(input + 1) >> (BYTE_BIT_LEN - bit_i);
+
+	buf->bytes[i] = 0;
+
+	if (n_bits < BYTE_BIT_LEN - bit_i)
+		buf->bytes[i] =
+			*input << bit_i
+			&
+			((u64) 1 << BYTE_BIT_LEN) - 1 << (BYTE_BIT_LEN - n_bits);
+	else {
+		buf->bytes[i] = *input << bit_i | *(input + 1) >> (BYTE_BIT_LEN - bit_i);
+		n_bits -= bit_i + 1;
+		buf->bytes[i] &= ((u64) 1 << BYTE_BIT_LEN) - 1 << (BYTE_BIT_LEN - n_bits);
+	}
+
+	/*
+	NOTE: The for loop is easier to write accessing the raw bytes because the
+	input is big endian. Writing to .a directly would require me to set up
+	another buffer to put things in little endian before writing, which defeats
+	the point of having u256 as a union in the first place
+	*/
 }
