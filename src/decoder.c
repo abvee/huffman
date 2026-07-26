@@ -26,11 +26,10 @@ more space.
 struct {
 	uint64_t (*start)[HM_LEN / U64_BIT_LEN];
 	uint r_index; // how many more excluding .start are present in this bit range
+	uint marker;
 } bit_ranges[HM_LEN];
 
-static uint bit_marker[HM_LEN]; // indexes start locations
-
-static inline uint read_characters(
+static inline void read_characters(
 	struct character *characters,
 	byte *buf,
 	uint char_count
@@ -41,8 +40,8 @@ void decode(byte *buf, uint buf_len) {
 	for (uint i = 0; i < sizeof bit_ranges / sizeof *bit_ranges; i++) {
 		bit_ranges[i].start = NULL;
 		bit_ranges[i].r_index = 0;
+		bit_ranges[i].marker = 0;
 	}
-	memset(bit_marker, 0,sizeof bit_marker);
 
 	// Start reading input
 	uint char_count = buf[0] + 1; // 0 -> 255
@@ -50,7 +49,7 @@ void decode(byte *buf, uint buf_len) {
 	uint buf_i = 1;
 
 	struct character *characters = malloc(sizeof *characters * char_count);
-	uint max_bit_len = read_characters(characters, buf + buf_i, char_count);
+	read_characters(characters, buf + buf_i, char_count);
 	// characters is now a sorted array
 	buf_i += 2 * char_count;
 
@@ -58,11 +57,20 @@ void decode(byte *buf, uint buf_len) {
 	Generate canon codes
 	*/
 	memset(encodings[characters[0].c].bits, 0, sizeof (*encodings).bits);
+	encodings[characters[0].c].n_bits = characters[0].count;
 
 	// bit ranges
 	uint bit_range_index = characters[0].count - 1; // current index of bit_ranges
 	bit_ranges[bit_range_index].start = &encodings[characters[0].c].bits;
-	bit_marker[bit_range_index] = 0;
+	bit_ranges[bit_range_index].marker = 0;
+
+	if (isalnum(characters[0].c))
+		f_printf("%c(%d): %d ->\t", characters[0].c, characters[0].c, encodings[characters[0].c].n_bits);
+	else
+		f_printf("(%d): %d ->\t", characters[0].c, encodings[characters[0].c].n_bits);
+	for (int i = 0; i < sizeof (*encodings).bits / sizeof *(*encodings).bits; i++)
+		f_printf("0x%016lx ", encodings[characters[0].c].bits[i]);
+	f_printf("\n");
 
 	for (uint i = 1; i < char_count; i++) {
 		gen_canon_codes(characters + i, characters + i - 1);
@@ -74,7 +82,7 @@ void decode(byte *buf, uint buf_len) {
 				bit_range_index + 1,
 				bit_ranges[bit_range_index].r_index + 1
 			);
-			bit_marker[bit_range_index] = i;
+			bit_ranges[bit_range_index].marker = i;
 			f_printf("Bit marker placed at %u\n", i);
 
 			// bit_ranges stuff
@@ -90,8 +98,8 @@ void decode(byte *buf, uint buf_len) {
 			f_printf("%c(%d): %d ->\t", characters[i].c, characters[i].c, encodings[characters[i].c].n_bits);
 		else
 			f_printf("(%d): %d ->\t", characters[i].c, encodings[characters[i].c].n_bits);
-		for (int i = 0; i < sizeof (*encodings).bits / sizeof *(*encodings).bits; i++)
-			f_printf("0x%016lx ", encodings[characters[i].c].bits[i]);
+		for (int j = 0; j < sizeof (*encodings).bits / sizeof *(*encodings).bits; j++)
+			f_printf("0x%016lx ", encodings[characters[i].c].bits[j]);
 		f_printf("\n");
 	}
 
@@ -99,7 +107,7 @@ void decode(byte *buf, uint buf_len) {
 	free(characters);
 }
 
-static inline uint read_characters(
+static inline void read_characters(
 	struct character *characters,
 	byte *buf,
 	uint char_count
@@ -108,7 +116,6 @@ static inline uint read_characters(
 	Read the characters and enter them to buffer in a sorted order (insertion
 	sort). Return max bit length found
 	*/
-	uint max_bit_len = 0;
 	uint buf_i = 0;
 
 	// count characters and put them in a priority queue
@@ -125,9 +132,6 @@ static inline uint read_characters(
 			f_printf("(%d):%d\n", buf[buf_i], buf[buf_i + 1]);
 
 		const uint count = buf[buf_i + 1];
-
-		if (max_bit_len < count)
-			max_bit_len = count;
 
 		uint i = characters_i;
 		for (; i > 0 && count < characters[i - 1].count; i--)
@@ -153,6 +157,4 @@ static inline uint read_characters(
 		else
 			f_printf("(%d):%d ", characters[i].c, characters[i].count);
 	f_printf("\n");
-
-	return max_bit_len;
 }
