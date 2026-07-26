@@ -24,7 +24,7 @@ to the entire array, cuz why not, it's type checking and it doesn't take up any
 more space.
 */
 struct {
-	uint64_t (*start)[HM_LEN / TYPE_LEN_BITS];
+	uint64_t (*start)[HM_LEN / U64_BIT_LEN];
 	uint r_index; // how many more excluding .start are present in this bit range
 } bit_ranges[HM_LEN];
 

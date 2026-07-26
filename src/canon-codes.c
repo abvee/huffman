@@ -12,7 +12,6 @@ static struct {
 	uint64_t bits[HM_LEN / (sizeof(uint64_t) * 8)];
 	uint8_t n_bits;
 } encodings[HM_LEN];
-enum { TYPE_LEN_BITS = sizeof *(*encodings).bits * 8 };
 
 // generate canonical codes and fill in encodings[]
 static inline void gen_canon_codes(
@@ -40,11 +39,11 @@ static inline void gen_canon_codes(
 	bits means we lose the everything in that array cell.
 
 	So, we compute where we'll end up if we were to shift there, copy the
-	bytes over. Only then do we shift by (shift % TYPE_LEN_BITS)
+	bytes over. Only then do we shift by (shift % U64_BIT_LEN)
 	*/
 	{
 		unsigned int current_byte = encodings[c_in].n_bits;
-		unsigned int index = (encodings[c_in].n_bits + shift) / TYPE_LEN_BITS;
+		unsigned int index = (encodings[c_in].n_bits + shift) / U64_BIT_LEN;
 		for (int i = current_byte; i >= 0 && index > current_byte; index--, i--) {
 			encodings[c_in].bits[index] = encodings[c_in].bits[i];
 			encodings[c_in].bits[i] = 0;
@@ -53,15 +52,15 @@ static inline void gen_canon_codes(
 
 	/*
 	now we handle the remaining shift % 64 bits of shifting
-	Note that if shift % 64 is 0, then TYPE_LEN_BITS - shift is UB (can't
+	Note that if shift % 64 is 0, then U64_BIT_LEN - shift is UB (can't
 	shift 64 bits) hence the if (shift)
 	*/
-	shift &= TYPE_LEN_BITS - 1;
-	if (shift) for (int i = 1; i < HM_LEN / TYPE_LEN_BITS; i++) {
+	shift &= U64_BIT_LEN - 1;
+	if (shift) for (int i = 1; i < HM_LEN / U64_BIT_LEN; i++) {
 		encodings[c_in].bits[i] =
 			(encodings[c_in].bits[i] << shift)
 			|
-			(encodings[c_in].bits[i - 1] >> (TYPE_LEN_BITS - shift));
+			(encodings[c_in].bits[i - 1] >> (U64_BIT_LEN - shift));
 	}
 	encodings[c_in].bits[0] <<= shift;
 }

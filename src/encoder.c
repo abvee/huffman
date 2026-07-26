@@ -233,8 +233,6 @@ struct {
 	int i; // index
 } accumulator = {.ac = 0, .i = -1};
 
-enum { AC_BIT_LEN = sizeof accumulator.ac * 8 };
-
 static inline void ac_flush(byte *op_buffer) {
 	for (
 		int i = sizeof accumulator.raw_bytes / sizeof *accumulator.raw_bytes;
@@ -258,19 +256,19 @@ static uint serialize(byte *in_buffer, unsigned int in_buf_len, byte *op_buffer)
 		uint n_bits = encodings[in_buffer[i]].n_bits;
 		assert(n_bits > 0); // every input HAS to have an encodings buffer
 
-		while (n_bits > AC_BIT_LEN - (accumulator.i + 1)) {
-			accumulator.ac <<= AC_BIT_LEN - (accumulator.i + 1);
+		while (n_bits > U64_BIT_LEN - (accumulator.i + 1)) {
+			accumulator.ac <<= U64_BIT_LEN - (accumulator.i + 1);
 
 			accumulator.ac |=
-				encodings[in_buffer[i]].bits[(n_bits - 1) / TYPE_LEN_BITS]
+				encodings[in_buffer[i]].bits[(n_bits - 1) / U64_BIT_LEN]
 				>>
-				(n_bits - (AC_BIT_LEN - (accumulator.i + 1)));
+				(n_bits - (U64_BIT_LEN - (accumulator.i + 1)));
 			/*
 			NOTE: n_bits - 1 to handle n_bits == 64
 			n_bits cannot be 0
 			*/
 
-			n_bits -= AC_BIT_LEN - (accumulator.i + 1);
+			n_bits -= U64_BIT_LEN - (accumulator.i + 1);
 
 			ac_flush(op_buffer + op_buffer_i);
 			op_buffer_i += sizeof accumulator.ac;
@@ -290,7 +288,6 @@ static uint serialize(byte *in_buffer, unsigned int in_buf_len, byte *op_buffer)
 	f_printf("Accumulator runs: %lu\n", op_buffer_i / sizeof accumulator.ac);
 
 	// flush the accumulator
-	constexpr uint BYTE_BIT_LEN = sizeof *accumulator.raw_bytes * 8;
 	uint mod = BYTE_BIT_LEN - (accumulator.i % BYTE_BIT_LEN) - 1;
 	// remaining space in that byte ^
 

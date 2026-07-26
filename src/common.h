@@ -3,6 +3,11 @@
 
 #include <stdint.h>
 typedef uint8_t byte;
+typedef uint8_t byte;
+enum {
+	BYTE_BIT_LEN = sizeof(byte)  * 8,
+	U64_BIT_LEN = sizeof(uint64_t) * 8,
+};
 
 // character to store in p_queue
 struct treelink {
