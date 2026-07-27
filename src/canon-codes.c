@@ -42,8 +42,8 @@ static inline void gen_canon_codes(
 	bytes over. Only then do we shift by (shift % U64_BIT_LEN)
 	*/
 	{
-		unsigned int current_byte = encodings[c_in].n_bits;
-		unsigned int index = (encodings[c_in].n_bits + shift) / U64_BIT_LEN;
+		unsigned int current_byte = (encodings[c_in].n_bits - 1) / U64_BIT_LEN;
+		unsigned int index = (encodings[c_in].n_bits + shift - 1) / U64_BIT_LEN;
 		for (int i = current_byte; i >= 0 && index > current_byte; index--, i--) {
 			encodings[c_in].bits[index] = encodings[c_in].bits[i];
 			encodings[c_in].bits[i] = 0;
@@ -55,7 +55,7 @@ static inline void gen_canon_codes(
 	Note that if shift % 64 is 0, then U64_BIT_LEN - shift is UB (can't
 	shift 64 bits) hence the if (shift)
 	*/
-	shift &= U64_BIT_LEN - 1;
+	shift %= U64_BIT_LEN;
 	if (shift) for (int i = 1; i < HM_LEN / U64_BIT_LEN; i++) {
 		encodings[c_in].bits[i] =
 			(encodings[c_in].bits[i] << shift)
