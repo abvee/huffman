@@ -216,33 +216,4 @@ inline void read_in(
 	uint bit_i,
 	u256 *buf,
 	uint n_bits
-) {
-	// NOTE: the input has no bounds check, please make sure caller doesn't mess
-	// it up
-	assert(n_bits <= HM_LEN);
-	assert(bit_i >= 0 && bit_i < BYTE_BIT_LEN);
-
-	uint i = 0; // byte index
-	for (; n_bits > BYTE_BIT_LEN; i++, n_bits -= BYTE_BIT_LEN, input++)
-		buf->bytes[i] = *input << bit_i | *(input + 1) >> (BYTE_BIT_LEN - bit_i);
-
-	buf->bytes[i] = 0;
-
-	if (n_bits < BYTE_BIT_LEN - bit_i)
-		buf->bytes[i] =
-			*input << bit_i
-			&
-			((u64) 1 << BYTE_BIT_LEN) - 1 << (BYTE_BIT_LEN - n_bits);
-	else {
-		buf->bytes[i] = *input << bit_i | *(input + 1) >> (BYTE_BIT_LEN - bit_i);
-		n_bits -= bit_i + 1;
-		buf->bytes[i] &= ((u64) 1 << BYTE_BIT_LEN) - 1 << (BYTE_BIT_LEN - n_bits);
-	}
-
-	/*
-	NOTE: The for loop is easier to write accessing the raw bytes because the
-	input is big endian. Writing to .a directly would require me to set up
-	another buffer to put things in little endian before writing, which defeats
-	the point of having u256 as a union in the first place
-	*/
-}
+) { }
