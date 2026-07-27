@@ -182,6 +182,7 @@ static inline void read_in(
 	u256 *buf,
 	uint n_bits
 );
+static inline bool bit_range_cmp(u256 *buf, uint n_bits);
 
 void deserialize(byte *buf, uint buf_len) {
 	assert(bit_lens.top <= sizeof bit_lens.stk / sizeof *bit_lens.stk);
@@ -202,10 +203,15 @@ void deserialize(byte *buf, uint buf_len) {
 				&read_buf,
 				bit_lens.stk[j]
 			);
+
+			// debug print
 			f_printf("Read buffer for %u bits->\t", bit_lens.stk[j]);
 			for (int i = 0; i < sizeof read_buf.a / sizeof *read_buf.a; i++)
 				f_printf("0x%016lx ", read_buf.a[i]);
 			f_printf("\n");
+
+			if (bit_range_cmp(&read_buf, bit_lens.stk[j]))
+				f_printf("true\n");
 		}
 	}
 }
@@ -231,7 +237,7 @@ inline void read_in(
 		input++;
 	}
 
-	assert(n_bits = original_n_bits % BYTE_BIT_LEN);
+	assert(n_bits == original_n_bits % BYTE_BIT_LEN);
 
 	buf->bytes[0] = (*input << bit_i) >> (BYTE_BIT_LEN - n_bits);
 
@@ -241,4 +247,23 @@ inline void read_in(
 		buf->bytes[i] |= buf->bytes[i + 1] << n_bits;
 		buf->bytes[i + 1] >>= (BYTE_BIT_LEN - n_bits);
 	}
+
+	/*
+	For an O(n) solution, you have to read some number of bits... down from the
+	input instead of shifting them all at the end
+
+	Ideally a u256 would be typedef u64 u256[4] instead of a union, but the
+	shifting gets infinitely messier when trying to cross a 64 bit boundry.
+	You would need to read into the correct bytes for a certain range before
+	being able to write into the buffer directly without any computation.
+
+	I guess TODO: change this entire thing to the u64 bit version
+	*/
+}
+
+inline bool bit_range_cmp(u256 *buf, uint n_bits) {
+	assert(n_bits > 0 && n_bits <= HM_LEN);
+
+	uint byte_index = (n_bits - 1) / U64_BIT_LEN;
+	return true;
 }
