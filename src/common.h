@@ -10,6 +10,14 @@ enum {
 	U64_BIT_LEN = sizeof(u64) * 8,
 };
 
+constexpr uint HM_LEN = pow(2, sizeof(char) * 8);
+constexpr uint TREE_MAX = 2 * HM_LEN - 1;
+
+typedef union {
+	u64 a[HM_LEN / U64_BIT_LEN]; // the 'a' stands for array, couldn't come up with a better name
+	byte bytes[HM_LEN / BYTE_BIT_LEN];
+} u256;
+
 // character to store in p_queue
 struct treelink {
 	struct character *left;
@@ -23,14 +31,6 @@ struct character {
 };
 
 enum {MAX = 128};
-
-constexpr unsigned int HM_LEN = pow(2, sizeof(char) * 8);
-constexpr unsigned int TREE_MAX = 2 * HM_LEN - 1;
-
-typedef union {
-	u64 a[HM_LEN / U64_BIT_LEN]; // the 'a' stands for array, couldn't come up with a better name
-	byte bytes[HM_LEN / BYTE_BIT_LEN];
-} u256;
 
 bool print_flag = false; // replace with bit field if we get many more options
 bool decode_flag = false;
