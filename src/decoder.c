@@ -24,7 +24,7 @@ to the entire array, cuz why not, it's type checking and it doesn't take up any
 more space.
 */
 struct {
-	uint64_t (*start)[HM_LEN / U64_BIT_LEN];
+	u64 (*start)[HM_LEN / U64_BIT_LEN];
 	uint r_index; // how many more excluding .start are present in this bit range
 	uint marker;
 } bit_ranges[HM_LEN];
@@ -97,12 +97,11 @@ void decode(byte *buf, uint buf_len) {
 				bit_range_index + 1,
 				bit_ranges[bit_range_index].r_index + 1
 			);
-			bit_ranges[bit_range_index].marker = i;
-			f_printf("Bit marker for %u placed at %u\n", bit_range_index + 1, i);
 
-			// bit_ranges stuff
 			bit_range_index = characters[i].count - 1;
 			bit_ranges[bit_range_index].start = &encodings[characters[i].c].bits;
+			bit_ranges[bit_range_index].marker = i;
+			f_printf("Bit marker for %u placed at %u\n", bit_range_index + 1, i);
 
 			// new bit started, the len should be 0
 			assert(bit_ranges[bit_range_index].r_index == 0);
