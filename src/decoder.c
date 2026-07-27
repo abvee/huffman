@@ -195,25 +195,50 @@ void deserialize(byte *buf, uint buf_len) {
 
 	for (;buf_i < buf_len;) {
 		for (uint j = 0; j < bit_lens.top; j++) {
+			memset(read_buf.a, 0, sizeof read_buf.a); // remove after you're done debugging
 			read_in(
 				buf + buf_i,
 				bit_i,
 				&read_buf,
 				bit_lens.stk[j]
 			);
+			f_printf("Read buffer for %u bits->\t", bit_lens.stk[j]);
+			for (int i = 0; i < sizeof read_buf.a / sizeof *read_buf.a; i++)
+				f_printf("0x%016lx ", read_buf.a[i]);
+			f_printf("\n");
 		}
 	}
 }
 
-// read n_bits into buffer
-
 /*
-The input encoded data HAS to be byte aligned or this crashes. The last byte
-NEEDS to have padding in it
+This is an O(2n) solution, there is probably an O(n) solution somewhere
 */
 inline void read_in(
 	byte *input,
 	uint bit_i,
 	u256 *buf,
 	uint n_bits
-) { }
+) {
+	assert(bit_i < BYTE_BIT_LEN);
+	assert(n_bits <= HM_LEN);
+
+	uint original_n_bits = n_bits;
+	uint byte_index = (n_bits - 1) / BYTE_BIT_LEN;
+
+	for (; n_bits >= BYTE_BIT_LEN; n_bits -= BYTE_BIT_LEN) {
+		buf->bytes[byte_index--] =
+			*input << bit_i | *(input + 1) >> (BYTE_BIT_LEN - bit_i);
+		input++;
+	}
+
+	assert(n_bits = original_n_bits % BYTE_BIT_LEN);
+
+	buf->bytes[0] = (*input << bit_i) >> (BYTE_BIT_LEN - n_bits);
+
+	// here's the O(2n) solution
+	byte_index = (original_n_bits - 1) / BYTE_BIT_LEN;
+	for (uint i = 0; i < byte_index; i++) {
+		buf->bytes[i] |= buf->bytes[i + 1] << n_bits;
+		buf->bytes[i + 1] >>= (BYTE_BIT_LEN - n_bits);
+	}
+}
