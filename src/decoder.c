@@ -38,7 +38,13 @@ static inline void read_characters(
 	byte *buf,
 	uint char_count
 );
-void deserialize(byte *buf, uint buf_len, struct character *characters);
+void deserialize(
+	byte *buf,
+	uint buf_len,
+	struct character *characters,
+	dynarray *output
+);
+static inline uint nearest_larger_pow2(uint in);
 
 void decode(byte *buf, uint buf_len) {
 	// init bit_ranges and decode_hash_map
@@ -118,9 +124,18 @@ void decode(byte *buf, uint buf_len) {
 	}
 	bit_lens.stk[bit_lens.top++] = bit_range_index + 1; // Don't forget to write the last bit length
 
+	/*
+	Unlike encoding, we don't know the length of the output, so we need to use a
+	dynarray here
+	*/
+	dynarray output = {NULL, nearest_larger_pow2(buf_len), 0};
+	output.ptr = malloc(sizeof *output.ptr * output.capacity);
 
-	deserialize(buf + buf_i, buf_len - buf_i, characters);
+	deserialize(buf + buf_i, buf_len - buf_i, characters, &output);
+
+	fwrite(output.ptr, sizeof *output.ptr, output.len, stdout);
 	free(characters);
+	free(output.ptr);
 }
 
 static inline void read_characters(
@@ -175,6 +190,21 @@ static inline void read_characters(
 	f_printf("\n");
 }
 
+// bit smearing
+inline uint nearest_larger_pow2(uint in) {
+	if (in <= 1) return 1;
+
+	in--; // why ?
+
+	in |= in >> 1;
+	in |= in >> 2;
+	in |= in >> 4;
+	in |= in >> 8;
+	in |= in >> 16;
+
+	return in + 1;
+}
+
 // deserializer
 static inline void read_in(
 	byte *input,
@@ -185,9 +215,13 @@ static inline void read_in(
 static inline bool bit_range_cmp(u256 *buf, uint n_bits);
 static inline int offset_diff(const u256 *buf, uint n_bits);
 
-void deserialize(byte *buf, uint buf_len, struct character *characters) {
+void deserialize(
+	byte *buf,
+	uint buf_len,
+	struct character *characters,
+	dynarray *output
+) {
 	assert(bit_lens.top <= sizeof bit_lens.stk / sizeof *bit_lens.stk);
-
 	uint buf_i = 0;
 	uint bit_i = 0; // intra byte index
 	// indexes next free, not current top
@@ -216,10 +250,13 @@ void deserialize(byte *buf, uint buf_len, struct character *characters) {
 			// difference testing
 			int d = offset_diff(&read_buf, bit_lens.stk[j]);
 			if (d <= bit_ranges[bit_lens.stk[j] - 1].r_index) {
+
 				byte c = characters[bit_ranges[bit_lens.stk[j] - 1].marker + d].c;
-				f_printf("\nCharacter written: (%d)\n", c);
-				fputc(c, stdout);
-				f_printf("\n");
+				f_printf("Character written: (%d)\n", c);
+
+				output->ptr[output->len++] = c;
+				if (output->len >= output->capacity)
+					output->ptr = realloc(output->ptr, sizeof *output->ptr * (output->capacity *= 2));
 				break;
 			}
 		}
