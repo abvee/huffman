@@ -217,8 +217,9 @@ void deserialize(byte *buf, uint buf_len, struct character *characters) {
 			int d = offset_diff(&read_buf, bit_lens.stk[j]);
 			if (d <= bit_ranges[bit_lens.stk[j] - 1].r_index) {
 				byte c = characters[bit_ranges[bit_lens.stk[j] - 1].marker + d].c;
-				if (isalnum(c)) f_printf("%c\n", c);
-				else f_printf("(%d)\n", c);
+				f_printf("\nCharacter written: (%d)\n", c);
+				fputc(c, stdout);
+				f_printf("\n");
 				break;
 			}
 		}
