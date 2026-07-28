@@ -1,0 +1,100 @@
+.TH HUFFMAN 1 "July 28, 2026" "huffman" "General Commands Manual"
+.SH NAME
+huffman \- command-line Huffman encoder and decoder
+.SH SYNOPSIS
+.B huffman
+[\fB\-d\fR] [\fB\-p\fR]
+.SH DESCRIPTION
+Reads raw data from standard input, applies or reverses Huffman
+encoding, and writes the result to standard output.  This is an
+educational, toy implementation aimed at clarity rather than
+production-grade compression.  For real-world use, prefer gzip(1)
+or lzma(1).
+
+It is however made to be as fast as possible with the compression ratio offered
+by huffman encoding
+.P
+When invoked without flags,
+.B huffman
+operates in encode mode: it builds a Huffman tree from the byte
+frequencies of the input, generates canonical codes, and writes a
+compressed bitstream prefixed by a header that lists each distinct
+character and its code length.
+.P
+The container format is:
+.IP \(bu 2
+Byte 0: number of unique characters minus 1 (0\(en255).
+.IP \(bu 2
+For each character, sorted by canonical code length ascending: the
+character byte, followed by its code length in bits (1\(en255).
+.IP \(bu 2
+The remaining bytes form the canonical Huffman bitstream, most
+significant bit first within each byte, arbitrarily padded.
+.P
+In decode mode (\fB\-d\fR) the header and bitstream are read back,
+the canonical codes are reconstructed from the stored code lengths,
+and the original data is recovered.
+.SH OPTIONS
+.TP
+.B \-d
+Decode (decompress) mode.  Read a previously compressed stream from
+standard input and write the decompressed result to standard output.
+.TP
+.B \-p
+Enable debug printing.  Frequency tables, tree structure, canonical
+codes, and per-character serialization details are written to
+standard error.
+.SH EXIT STATUS
+.IP 0
+Successful completion.
+.IP 1
+A fatal error occurred (e.g. malformed compressed input).
+.SH EXAMPLES
+Compress a file:
+.RS
+.PD 0
+.P
+huffman < document.txt > document.huf
+.PD
+.RE
+.P
+Decompress a file:
+.RS
+.PD 0
+.P
+huffman -d < document.huf > document.txt
+.PD
+.RE
+.P
+Compress, pipe through decompression, and run the result:
+.RS
+.PD 0
+.P
+huffman < /bin/ls | huffman -d > ls
+.P
+chmod +x ./ls && ./ls
+.PD
+.RE
+.P
+Inspect internal state during compression or decompression:
+.RS
+.PD 0
+.P
+huffman -p < document.txt > /dev/null
+.P
+huffman -pd < document.huf > /dev/null
+.PD
+.RE
+.SH BUGS
+The debug output is written via
+.BR printf (3)
+and can therefore interleave with compressed data sent to standard
+output when both streams share a terminal.
+.P
+Report bugs and submit patches to
+.UR https://github.com/abvee/huffman
+.UE .
+.SH AUTHOR
+abvee
+.UR https://github.com/abvee/huffman
+.UE
