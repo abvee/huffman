@@ -210,10 +210,16 @@ void deserialize(byte *buf, uint buf_len) {
 					f_printf("0x%016lx ", read_buf.a[i]);
 				f_printf("\n");
 			}
+
+			// difference testing
+			int d = offset_diff(&read_buf, bit_lens.stk[j]);
+			if (d <= bit_ranges[bit_lens.stk[j] - 1].r_index)
+				f_printf("true\n");
 		}
 		break;
 	}
 }
+
 
 /*
 This is an O(2n) solution, there is probably an O(n) solution somewhere
@@ -292,4 +298,21 @@ inline bool bit_range_cmp(u256 *buf, uint n_bits) {
 	buf->a[byte_index] <= upper_bound.a[byte_index]
 		&&
 	buf->a[byte_index] >= lower_bound.a[byte_index];
+}
+
+inline int offset_diff(const u256 *buf, uint n_bits) {
+	assert(n_bits > 0 && n_bits <= HM_LEN);
+	/*
+	the difference CANNOT be more than 255
+	if it is, then return 257, guaranteed to be more than any r_index
+	*/
+	uint current_word = (n_bits - 1) / U64_BIT_LEN;
+	for (;
+		current_word > 0
+			&&
+		(*bit_ranges[n_bits - 1].start)[current_word] == buf->a[current_word];
+		current_word--
+	)
+	if (current_word != 0) return HM_LEN + 1;
+	return *buf->a - *(*bit_ranges[n_bits - 1].start);
 }
