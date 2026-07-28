@@ -182,6 +182,7 @@ static inline void read_in(
 	uint n_bits
 );
 static inline bool bit_range_cmp(u256 *buf, uint n_bits);
+static inline int offset_diff(const u256 *buf, uint n_bits);
 
 void deserialize(byte *buf, uint buf_len) {
 	assert(bit_lens.top <= sizeof bit_lens.stk / sizeof *bit_lens.stk);
@@ -191,11 +192,10 @@ void deserialize(byte *buf, uint buf_len) {
 	// indexes next free, not current top
 
 	u256 read_buf;
-	memset(read_buf.a, 0, sizeof read_buf.a);
 
 	for (;buf_i < buf_len;) {
 		for (uint j = 0; j < bit_lens.top; j++) {
-			// memset(read_buf.a, 0, sizeof read_buf.a); // remove after you're done debugging
+			memset(read_buf.a, 0, sizeof read_buf.a);
 			read_in(
 				buf + buf_i,
 				bit_i,
@@ -236,7 +236,10 @@ inline void read_in(
 		input++;
 	}
 
+	if (n_bits == 0) return;
+
 	assert(n_bits == original_n_bits % BYTE_BIT_LEN);
+	assert(byte_index == 0);
 
 	buf->bytes[0] = (*input << bit_i) >> (BYTE_BIT_LEN - n_bits);
 
