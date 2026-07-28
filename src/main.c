@@ -10,11 +10,7 @@
 #include "encoder.c"
 #include "decoder.c"
 
-struct {
-	byte *ptr;
-	uint capacity;
-	uint len;
-} buf = {NULL, 0, 0}; // general purpose buffer
+dynarray buf = {NULL, 0, 0}; // input buffer
 
 void read_input();
 

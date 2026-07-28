@@ -18,6 +18,12 @@ typedef union {
 	byte bytes[HM_LEN / BYTE_BIT_LEN];
 } u256;
 
+typedef struct {
+	byte *ptr;
+	uint capacity;
+	uint len;
+} dynarray;
+
 // character to store in p_queue
 struct treelink {
 	struct character *left;
