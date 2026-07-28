@@ -195,7 +195,7 @@ void deserialize(byte *buf, uint buf_len) {
 
 	for (;buf_i < buf_len;) {
 		for (uint j = 0; j < bit_lens.top; j++) {
-			memset(read_buf.a, 0, sizeof read_buf.a); // remove after you're done debugging
+			// memset(read_buf.a, 0, sizeof read_buf.a); // remove after you're done debugging
 			read_in(
 				buf + buf_i,
 				bit_i,
@@ -203,15 +203,15 @@ void deserialize(byte *buf, uint buf_len) {
 				bit_lens.stk[j]
 			);
 
-			// debug print
-			f_printf("Read buffer for %u bits->\t", bit_lens.stk[j]);
-			for (int i = 0; i < sizeof read_buf.a / sizeof *read_buf.a; i++)
-				f_printf("0x%016lx ", read_buf.a[i]);
-			f_printf("\n");
-
-			if (bit_range_cmp(&read_buf, bit_lens.stk[j]))
-				f_printf("true\n");
+			if (bit_range_cmp(&read_buf, bit_lens.stk[j])) {
+				// debug print
+				f_printf("Read buffer for %u bits->\t", bit_lens.stk[j]);
+				for (int i = 0; i < sizeof read_buf.a / sizeof *read_buf.a; i++)
+					f_printf("0x%016lx ", read_buf.a[i]);
+				f_printf("\n");
+			}
 		}
+		break;
 	}
 }
 
@@ -263,6 +263,30 @@ inline void read_in(
 inline bool bit_range_cmp(u256 *buf, uint n_bits) {
 	assert(n_bits > 0 && n_bits <= HM_LEN);
 
+	const uint bit_range_i = n_bits - 1; // bit_ranges index to use
+	// recall that it's 0 indexed while n_bits is a count
+
+	u256 upper_bound, lower_bound;
+	memcpy(upper_bound.a, bit_ranges[bit_range_i].start, sizeof upper_bound.a);
+	memcpy(lower_bound.a, bit_ranges[bit_range_i].start, sizeof lower_bound.a);
+	/*
+	TODO: fix this lower bound by making encoding take a u256 instead of a raw array
+	That way we can access start directly instead doing a memcpy here, which
+	is pretty expensive considering the number of times this function runs
+	*/
+
+	// add to upper bound
+	assert(bit_ranges[bit_range_i].r_index < HM_LEN);
+	// check overflow
+	if (upper_bound.a[0] + bit_ranges[bit_range_i].r_index < upper_bound.a[0])
+		for (uint i = 1; !++upper_bound.a[i]; i++);
+	upper_bound.a[0] += bit_ranges[bit_range_i].r_index;
+
+	// do the comparison
 	uint byte_index = (n_bits - 1) / U64_BIT_LEN;
-	return true;
+
+	return
+	buf->a[byte_index] <= upper_bound.a[byte_index]
+		&&
+	buf->a[byte_index] >= lower_bound.a[byte_index];
 }
