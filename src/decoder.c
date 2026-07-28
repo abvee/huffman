@@ -1,5 +1,7 @@
 #include <ctype.h>
 #include <assert.h>
+#include <string.h>
+#include <stdlib.h>
 #include "common.h"
 #include "canon-codes.c"
 

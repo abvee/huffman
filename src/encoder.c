@@ -1,5 +1,6 @@
-#include <stdio.h>
 #include <assert.h>
+#include <stdlib.h>
+#include <string.h>
 #include "common.h"
 #include "p-queue.c"
 #include "canon-codes.c"
@@ -20,7 +21,6 @@ static uint serialize(
 	uint in_buf_len,
 	byte *op_buffer
 );
-
 
 /*
 giant fuck off hash map for every possible character, and similar strategy for
