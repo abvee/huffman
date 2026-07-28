@@ -48,7 +48,7 @@ int f_printf(const char *restrict format, ...) {
 
 	int ret = 0;
 	if (print_flag)
-		ret = vprintf(format, args);
+		ret = vfprintf(stderr, format, args);
 	va_end(args);
 	return ret;
 }
