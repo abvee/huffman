@@ -38,7 +38,7 @@ static inline void read_characters(
 	byte *buf,
 	uint char_count
 );
-void deserialize(byte *buf, uint buf_len);
+void deserialize(byte *buf, uint buf_len, struct character *characters);
 
 void decode(byte *buf, uint buf_len) {
 	// init bit_ranges and decode_hash_map
@@ -107,7 +107,6 @@ void decode(byte *buf, uint buf_len) {
 			assert(bit_ranges[bit_range_index].r_index == 0);
 
 		} else bit_ranges[bit_range_index].r_index++;
-
 		// debug print
 		if (isalnum(characters[i].c))
 			f_printf("%c(%d): %d ->\t", characters[i].c, characters[i].c, characters[i].count);
@@ -117,8 +116,10 @@ void decode(byte *buf, uint buf_len) {
 			f_printf("0x%016lx ", encodings[characters[i].c].bits[j]);
 		f_printf("\n");
 	}
+	bit_lens.stk[bit_lens.top++] = bit_range_index + 1; // Don't forget to write the last bit length
 
-	deserialize(buf + buf_i, buf_len);
+
+	deserialize(buf + buf_i, buf_len - buf_i, characters);
 	free(characters);
 }
 
@@ -184,7 +185,7 @@ static inline void read_in(
 static inline bool bit_range_cmp(u256 *buf, uint n_bits);
 static inline int offset_diff(const u256 *buf, uint n_bits);
 
-void deserialize(byte *buf, uint buf_len) {
+void deserialize(byte *buf, uint buf_len, struct character *characters) {
 	assert(bit_lens.top <= sizeof bit_lens.stk / sizeof *bit_lens.stk);
 
 	uint buf_i = 0;
@@ -193,8 +194,9 @@ void deserialize(byte *buf, uint buf_len) {
 
 	u256 read_buf;
 
-	for (;buf_i < buf_len;) {
-		for (uint j = 0; j < bit_lens.top; j++) {
+	for (; buf_i < buf_len;) {
+		uint j = 0;
+		for (; j < bit_lens.top; j++) {
 			memset(read_buf.a, 0, sizeof read_buf.a);
 			read_in(
 				buf + buf_i,
@@ -213,10 +215,16 @@ void deserialize(byte *buf, uint buf_len) {
 
 			// difference testing
 			int d = offset_diff(&read_buf, bit_lens.stk[j]);
-			if (d <= bit_ranges[bit_lens.stk[j] - 1].r_index)
-				f_printf("true\n");
+			if (d <= bit_ranges[bit_lens.stk[j] - 1].r_index) {
+				byte c = characters[bit_ranges[bit_lens.stk[j] - 1].marker + d].c;
+				if (isalnum(c)) f_printf("%c\n", c);
+				else f_printf("(%d)\n", c);
+				break;
+			}
 		}
-		break;
+		buf_i += (bit_i + bit_lens.stk[j]) / BYTE_BIT_LEN;
+		bit_i = (bit_i + bit_lens.stk[j]) % BYTE_BIT_LEN;
+		f_printf("New byte index: %u\nNew bit index: %u\n\n", buf_i, bit_i);
 	}
 }
 
@@ -247,7 +255,13 @@ inline void read_in(
 	assert(n_bits == original_n_bits % BYTE_BIT_LEN);
 	assert(byte_index == 0);
 
-	buf->bytes[0] = (*input << bit_i) >> (BYTE_BIT_LEN - n_bits);
+	if (n_bits < BYTE_BIT_LEN - bit_i)
+		buf->bytes[0] = (byte) (*input << bit_i) >> (BYTE_BIT_LEN - n_bits);
+	else
+		buf->bytes[0] =
+			(byte) ((*input << bit_i) | *(input + 1) >> (BYTE_BIT_LEN - bit_i))
+			>> (BYTE_BIT_LEN - n_bits);
+
 
 	// here's the O(2n) solution
 	byte_index = (original_n_bits - 1) / BYTE_BIT_LEN;
