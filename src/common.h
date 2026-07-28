@@ -26,7 +26,7 @@ struct treelink {
 
 struct character {
 	byte c;
-	unsigned int count;
+	uint count;
 	struct treelink link;
 };
 

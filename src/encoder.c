@@ -4,20 +4,20 @@
 #include "p-queue.c"
 #include "canon-codes.c"
 
-static void print_tree(struct character *current_node, unsigned int lvl);
+static void print_tree(struct character *current_node, uint lvl);
 static inline void bit_lenghts(
 	struct character *current_node,
-	unsigned int n_bits,
+	uint n_bits,
 	unsigned long *op_len
 );
 static inline struct character *build_tree(struct character *tree);
-static inline unsigned int count_unique_characters(
+static inline uint count_unique_characters(
 	byte *buf,
-	unsigned int buf_len
+	uint buf_len
 );
 static uint serialize(
 	byte *in_buffer,
-	unsigned int in_buf_len,
+	uint in_buf_len,
 	byte *op_buffer
 );
 
@@ -26,9 +26,9 @@ static uint serialize(
 giant fuck off hash map for every possible character, and similar strategy for
 the encodings
 */
-static unsigned int hash_map[HM_LEN];
+static uint hash_map[HM_LEN];
 
-void encode(byte *buf, unsigned int buf_len) {
+void encode(byte *buf, uint buf_len) {
 	/*
 	Build the huffman tree, generate canonical encodings and output length in
 	bits
@@ -36,7 +36,7 @@ void encode(byte *buf, unsigned int buf_len) {
 	unsigned long op_len = 0;
 	memset(hash_map, 0, HM_LEN * sizeof *hash_map);
 
-	unsigned int char_count = count_unique_characters(buf, buf_len);
+	uint char_count = count_unique_characters(buf, buf_len);
 	// full binary tree needs 2n - 1 nodes (n - 1 internal, n external)
 	struct character *tree = malloc(sizeof *tree * (2 * char_count - 1));
 	struct character *root = build_tree(tree);
@@ -51,7 +51,7 @@ void encode(byte *buf, unsigned int buf_len) {
 	pq_print();
 
 	byte *op_buffer;
-	const unsigned int op_buf_len =
+	const uint op_buf_len =
 		1 + // char_count
 		(sizeof *op_buffer * 2 * char_count) + // each of the characters
 		(op_len / 8 * sizeof *op_buffer) + 1; // all the output
@@ -63,7 +63,7 @@ void encode(byte *buf, unsigned int buf_len) {
 
 	op_buffer = malloc(op_buf_len);
 	op_buffer[0] = char_count - 1; // 0 -> 255
-	unsigned int op_buf_i = 1;
+	uint op_buf_i = 1;
 
 	// dequeue each character, write pair lengths to op_buffer and generate canon codes
 	struct character *prev = pq_dequeue();
@@ -115,14 +115,14 @@ void encode(byte *buf, unsigned int buf_len) {
 	free(op_buffer);
 }
 
-static inline unsigned int count_unique_characters(
+static inline uint count_unique_characters(
 	byte *buf,
-	unsigned int buf_len
+	uint buf_len
 ) {
 	/*
 	fill hash map with unique characters and count unique characters
 	*/
-	unsigned int char_count = 0;
+	uint char_count = 0;
 	for (int i = 0; i < buf_len; i++) {
 		if (!hash_map[buf[i]]) char_count++;
 		hash_map[buf[i]] += 1;
@@ -130,7 +130,7 @@ static inline unsigned int count_unique_characters(
 	return char_count;
 } 
 
-static void print_tree(struct character *current_node, unsigned int lvl) {
+static void print_tree(struct character *current_node, uint lvl) {
 	if (!current_node) return;
 	// print at correct depth
 	for (int i = 0; i < (int) lvl - 1; i++)
@@ -152,7 +152,7 @@ Also do frequency of symbols * bit length for total output length in bits
 */
 inline void bit_lenghts(
 	struct character *current_node,
-	unsigned int n_bits,
+	uint n_bits,
 	unsigned long *op_len
 ) {
 	/*
@@ -173,7 +173,7 @@ inline void bit_lenghts(
 }
 
 static inline struct character *build_tree(struct character *tree) {
-	unsigned int top = 0;
+	uint top = 0;
 
 	// Now put in p_queue
 	for (int i = 0; i < HM_LEN; i++) {
@@ -243,10 +243,10 @@ static inline void ac_flush(byte *op_buffer) {
 	accumulator.i = -1;
 }
 
-static uint serialize(byte *in_buffer, unsigned int in_buf_len, byte *op_buffer) {
+static uint serialize(byte *in_buffer, uint in_buf_len, byte *op_buffer) {
 	uint op_buffer_i = 0; // index
 
-	for (unsigned int i = 0; i < in_buf_len; i++) {
+	for (uint i = 0; i < in_buf_len; i++) {
 		// debug print
 		if (isalnum(in_buffer[i]))
 			f_printf("%d: %c(%d): %d\t", i, in_buffer[i], in_buffer[i], encodings[in_buffer[i]].n_bits);

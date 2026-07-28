@@ -18,7 +18,7 @@ static inline void gen_canon_codes(
 	const struct character *const current,
 	const struct character *const prev
 ) {
-	unsigned int c_in = current->c;
+	uint c_in = current->c;
 	encodings[c_in].n_bits = current->count;
 
 	// copy previous bits over
@@ -32,7 +32,7 @@ static inline void gen_canon_codes(
 	for (int i = 0; !++encodings[c_in].bits[i++];);
 
 	// shift bits
-	unsigned int shift = encodings[c_in].n_bits - encodings[prev->c].n_bits;
+	uint shift = encodings[c_in].n_bits - encodings[prev->c].n_bits;
 
 	/*
 	Okay, so basically if shift > 64, we have a problem. Shifting by > 64
@@ -42,8 +42,8 @@ static inline void gen_canon_codes(
 	bytes over. Only then do we shift by (shift % U64_BIT_LEN)
 	*/
 	{
-		unsigned int current_byte = (encodings[c_in].n_bits - 1) / U64_BIT_LEN;
-		unsigned int index = (encodings[c_in].n_bits + shift - 1) / U64_BIT_LEN;
+		uint current_byte = (encodings[c_in].n_bits - 1) / U64_BIT_LEN;
+		uint index = (encodings[c_in].n_bits + shift - 1) / U64_BIT_LEN;
 		for (int i = current_byte; i >= 0 && index > current_byte; index--, i--) {
 			encodings[c_in].bits[index] = encodings[c_in].bits[i];
 			encodings[c_in].bits[i] = 0;

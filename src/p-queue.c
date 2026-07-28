@@ -6,7 +6,7 @@ I wanted to make this a dynamic array, but if we're hardcoding the hash map as
 a direct map, might as well do the same for the priority queue
 */
 static struct character *queue[TREE_MAX];
-static unsigned int front = 0, back = 0;
+static uint front = 0, back = 0;
 
 void pq_reset() {
 	front = back = 0;

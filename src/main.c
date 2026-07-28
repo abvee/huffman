@@ -12,8 +12,8 @@
 
 struct {
 	byte *ptr;
-	unsigned int capacity;
-	unsigned int len;
+	uint capacity;
+	uint len;
 } buf = {NULL, 0, 0}; // general purpose buffer
 
 void read_input();
