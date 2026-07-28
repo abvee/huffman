@@ -19,12 +19,12 @@ range >= start && <= start + len
 We don't even need to account for overflow, because (n) elements having the
 same bit can't overflow if they're filled sequentially
 
-So, we only actually need to check encoding[].bits[0], but I've added a pointer
+So, we only actually need to check encoding[].bits.a[0], but I've added a pointer
 to the entire array, cuz why not, it's type checking and it doesn't take up any
 more space.
 */
 struct {
-	u64 (*start)[HM_LEN / U64_BIT_LEN];
+	u256 *start;
 	uint r_index; // how many more excluding .start are present in this bit range
 	uint marker;
 } bit_ranges[HM_LEN];
@@ -69,7 +69,7 @@ void decode(byte *buf, uint buf_len) {
 	/*
 	Generate canon codes
 	*/
-	memset(encodings[characters[0].c].bits, 0, sizeof (*encodings).bits);
+	memset(encodings[characters[0].c].bits.a, 0, sizeof (*encodings).bits.a);
 	encodings[characters[0].c].n_bits = characters[0].count;
 
 	// bit ranges
@@ -82,8 +82,8 @@ void decode(byte *buf, uint buf_len) {
 		f_printf("%c(%d): %d ->\t", characters[0].c, characters[0].c, encodings[characters[0].c].n_bits);
 	else
 		f_printf("(%d): %d ->\t", characters[0].c, encodings[characters[0].c].n_bits);
-	for (int i = 0; i < sizeof (*encodings).bits / sizeof *(*encodings).bits; i++)
-		f_printf("0x%016lx ", encodings[characters[0].c].bits[i]);
+	for (int i = 0; i < sizeof (*encodings).bits.a / sizeof *(*encodings).bits.a; i++)
+		f_printf("0x%016lx ", encodings[characters[0].c].bits.a[i]);
 	f_printf("\n");
 
 	for (uint i = 1; i < char_count; i++) {
@@ -118,8 +118,8 @@ void decode(byte *buf, uint buf_len) {
 			f_printf("%c(%d): %d ->\t", characters[i].c, characters[i].c, characters[i].count);
 		else
 			f_printf("(%d): %d ->\t", characters[i].c, characters[i].count);
-		for (int j = 0; j < sizeof (*encodings).bits / sizeof *(*encodings).bits; j++)
-			f_printf("0x%016lx ", encodings[characters[i].c].bits[j]);
+		for (int j = 0; j < sizeof (*encodings).bits.a / sizeof *(*encodings).bits.a; j++)
+			f_printf("0x%016lx ", encodings[characters[i].c].bits.a[j]);
 		f_printf("\n");
 	}
 	bit_lens.stk[bit_lens.top++] = bit_range_index + 1; // Don't forget to write the last bit length
@@ -327,9 +327,9 @@ inline int offset_diff(const u256 *buf, uint n_bits) {
 	for (;
 		current_word > 0
 			&&
-		(*bit_ranges[n_bits - 1].start)[current_word] == buf->a[current_word];
+		bit_ranges[n_bits - 1].start->a[current_word] == buf->a[current_word];
 		current_word--
 	)
 	if (current_word != 0) return HM_LEN + 1;
-	return *buf->a - *(*bit_ranges[n_bits - 1].start);
+	return *buf->a - *(bit_ranges[n_bits - 1].start->a);
 }

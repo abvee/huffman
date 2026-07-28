@@ -9,7 +9,7 @@ generation of canon codes
 #include "common.h"
 
 static struct {
-	uint64_t bits[HM_LEN / (sizeof(uint64_t) * 8)];
+	u256 bits;
 	uint8_t n_bits;
 } encodings[HM_LEN];
 
@@ -23,13 +23,13 @@ static inline void gen_canon_codes(
 
 	// copy previous bits over
 	memcpy(
-		encodings[c_in].bits,
-		encodings[prev->c].bits,
-		sizeof (*encodings).bits
+		encodings[c_in].bits.a,
+		encodings[prev->c].bits.a,
+		sizeof (*encodings).bits.a
 	);
 
 	// add 1
-	for (int i = 0; !++encodings[c_in].bits[i++];);
+	for (int i = 0; !++encodings[c_in].bits.a[i++];);
 
 	// shift bits
 	uint shift = encodings[c_in].n_bits - encodings[prev->c].n_bits;
@@ -45,8 +45,8 @@ static inline void gen_canon_codes(
 		uint current_byte = (encodings[c_in].n_bits - 1) / U64_BIT_LEN;
 		uint index = (encodings[c_in].n_bits + shift - 1) / U64_BIT_LEN;
 		for (int i = current_byte; i >= 0 && index > current_byte; index--, i--) {
-			encodings[c_in].bits[index] = encodings[c_in].bits[i];
-			encodings[c_in].bits[i] = 0;
+			encodings[c_in].bits.a[index] = encodings[c_in].bits.a[i];
+			encodings[c_in].bits.a[i] = 0;
 		}
 	}
 
@@ -57,11 +57,11 @@ static inline void gen_canon_codes(
 	*/
 	shift %= U64_BIT_LEN;
 	if (shift) for (int i = 1; i < HM_LEN / U64_BIT_LEN; i++) {
-		encodings[c_in].bits[i] =
-			(encodings[c_in].bits[i] << shift)
+		encodings[c_in].bits.a[i] =
+			(encodings[c_in].bits.a[i] << shift)
 			|
-			(encodings[c_in].bits[i - 1] >> (U64_BIT_LEN - shift));
+			(encodings[c_in].bits.a[i - 1] >> (U64_BIT_LEN - shift));
 	}
-	encodings[c_in].bits[0] <<= shift;
+	encodings[c_in].bits.a[0] <<= shift;
 }
 #endif

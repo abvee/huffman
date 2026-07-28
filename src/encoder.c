@@ -69,7 +69,7 @@ void encode(byte *buf, uint buf_len) {
 	struct character *prev = pq_dequeue();
 	// 0 initial encoding
 	encodings[prev->c].n_bits = prev->count;
-	memset(encodings[prev->c].bits, 0, sizeof (*encodings).bits);
+	memset(encodings[prev->c].bits.a, 0, sizeof (*encodings).bits.a);
 
 	// write to output buffer
 	op_buffer[op_buf_i] = prev->c;
@@ -78,8 +78,8 @@ void encode(byte *buf, uint buf_len) {
 
 	// debug print
 	f_printf("%c(%d): %d ->\t", prev->c, prev->c, encodings[prev->c].n_bits);
-	for (int i = 0; i < sizeof (*encodings).bits / sizeof *(*encodings).bits; i++)
-		f_printf("0x%016lx ", encodings[prev->c].bits[i]);
+	for (int i = 0; i < sizeof (*encodings).bits.a / sizeof *(*encodings).bits.a; i++)
+		f_printf("0x%016lx ", encodings[prev->c].bits.a[i]);
 	f_printf("\n");
 
 	for (struct character *current; current = pq_dequeue(); prev = current) {
@@ -95,8 +95,8 @@ void encode(byte *buf, uint buf_len) {
 			f_printf("%c(%d): %d ->\t", current->c, current->c, encodings[current->c].n_bits);
 		else
 			f_printf("(%d): %d ->\t", current->c, encodings[current->c].n_bits);
-		for (int i = 0; i < sizeof (*encodings).bits / sizeof *(*encodings).bits; i++)
-			f_printf("0x%016lx ", encodings[current->c].bits[i]);
+		for (int i = 0; i < sizeof (*encodings).bits.a / sizeof *(*encodings).bits.a; i++)
+			f_printf("0x%016lx ", encodings[current->c].bits.a[i]);
 		f_printf("\n");
 	}
 
@@ -260,7 +260,7 @@ static uint serialize(byte *in_buffer, uint in_buf_len, byte *op_buffer) {
 			accumulator.ac <<= U64_BIT_LEN - (accumulator.i + 1);
 
 			accumulator.ac |=
-				encodings[in_buffer[i]].bits[(n_bits - 1) / U64_BIT_LEN]
+				encodings[in_buffer[i]].bits.a[(n_bits - 1) / U64_BIT_LEN]
 				>>
 				(n_bits - (U64_BIT_LEN - (accumulator.i + 1)));
 			/*
@@ -275,12 +275,12 @@ static uint serialize(byte *in_buffer, uint in_buf_len, byte *op_buffer) {
 		}
 
 		/*
-		Since the size of the accumulator == sizeof encodings[].bits[0], we
+		Since the size of the accumulator == sizeof encodings[].bits.a[0], we
 		handle only index 0 here.
 		*/
 		accumulator.ac <<= n_bits;
 		accumulator.i += n_bits;
-		accumulator.ac |= encodings[in_buffer[i]].bits[0];
+		accumulator.ac |= encodings[in_buffer[i]].bits.a[0];
 
 		// accumulator debug
 		f_printf("%064lb: %d\n", accumulator.ac, accumulator.i);
