@@ -329,7 +329,7 @@ inline int offset_diff(const u256 *buf, uint n_bits) {
 			&&
 		bit_ranges[n_bits - 1].start->a[current_word] == buf->a[current_word];
 		current_word--
-	)
+	);
 	if (current_word != 0) return HM_LEN + 1;
 	return *buf->a - *(bit_ranges[n_bits - 1].start->a);
 }
